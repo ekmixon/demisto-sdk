@@ -59,7 +59,4 @@ class YAMLObject(DictionaryBasedObject):
         return [dest_file]
 
     def dump(self, dest_dir: Optional[Union[Path, str]] = None):
-        if self.modified:
-            return self._serialize(dest_dir)
-        else:
-            return super().dump(dest_dir)
+        return self._serialize(dest_dir) if self.modified else super().dump(dest_dir)

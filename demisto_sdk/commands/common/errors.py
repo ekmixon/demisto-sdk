@@ -466,18 +466,18 @@ ERROR_CODE = {
 
 
 def get_all_error_codes() -> List:
-    error_codes = []
-    for error in ERROR_CODE:
-        error_codes.append(ERROR_CODE[error].get('code'))
-
-    return error_codes
+    return [ERROR_CODE[error].get('code') for error in ERROR_CODE]
 
 
 def get_error_object(error_code: str) -> Dict:
-    for error in ERROR_CODE:
-        if error_code == ERROR_CODE[error].get('code'):
-            return ERROR_CODE[error]
-    return {}
+    return next(
+        (
+            ERROR_CODE[error]
+            for error in ERROR_CODE
+            if error_code == ERROR_CODE[error].get('code')
+        ),
+        {},
+    )
 
 
 @decorator.decorator
@@ -506,8 +506,7 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def wrong_version(expected="-1"):
-        return "The version for our files should always " \
-               "be {}, please update the file.".format(expected)
+        return f"The version for our files should always be {expected}, please update the file."
 
     @staticmethod
     @error_code_decorator
@@ -526,7 +525,7 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def file_name_include_spaces_error(file_name):
-        return "Please remove spaces from the file's name: '{}'.".format(file_name)
+        return f"Please remove spaces from the file's name: '{file_name}'."
 
     @staticmethod
     @error_code_decorator
@@ -551,10 +550,10 @@ class Errors:
     def no_minimal_fromversion_in_file(fromversion, oldest_supported_version):
         if fromversion == 'fromversion':
             return f"{fromversion} field is invalid.\nAdd `{fromversion}: " \
-                   f"{oldest_supported_version}` to the file."
+                       f"{oldest_supported_version}` to the file."
         else:
             return f'{fromversion} field is invalid.\nAdd `"{fromversion}": "{oldest_supported_version}"` ' \
-                   f'to the file.'
+                       f'to the file.'
 
     @staticmethod
     @error_code_decorator
@@ -603,27 +602,27 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def wrong_display_name(param_name, param_display):
-        return 'The display name of the {} parameter should be \'{}\''.format(param_name, param_display)
+        return f"The display name of the {param_name} parameter should be \'{param_display}\'"
 
     @staticmethod
     @error_code_decorator
     def wrong_default_parameter_not_empty(param_name, default_value):
-        return 'The default value of the {} parameter should be {}'.format(param_name, default_value)
+        return f'The default value of the {param_name} parameter should be {default_value}'
 
     @staticmethod
     @error_code_decorator
     def no_default_value_in_parameter(param_name):
-        return 'The {} parameter should have a default value'.format(param_name)
+        return f'The {param_name} parameter should have a default value'
 
     @staticmethod
     @error_code_decorator
     def wrong_required_value(param_name):
-        return 'The required field of the {} parameter should be False'.format(param_name)
+        return f'The required field of the {param_name} parameter should be False'
 
     @staticmethod
     @error_code_decorator
     def wrong_required_type(param_name):
-        return 'The type field of the {} parameter should be 8'.format(param_name)
+        return f'The type field of the {param_name} parameter should be 8'
 
     @staticmethod
     @error_code_decorator
@@ -636,7 +635,7 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def fromlicense_in_parameters(param_name):
-        return 'The "fromlicense" field of the {} parameter is not allowed for contributors'.format(param_name)
+        return f'The "fromlicense" field of the {param_name} parameter is not allowed for contributors'
 
     @staticmethod
     @error_code_decorator
@@ -648,33 +647,27 @@ class Errors:
     @error_code_decorator
     def reputation_missing_argument(arg_name, command_name, all=False):
         missing_msg = "These" if all else 'At least one of these'
-        return "{} arguments '{}' are required in the command '{}' and are not configured in yml." \
-            .format(missing_msg, arg_name, command_name)
+        return f"{missing_msg} arguments '{arg_name}' are required in the command '{command_name}' and are not configured in yml."
 
     @staticmethod
     @error_code_decorator
     def wrong_default_argument(arg_name, command_name):
-        return "The argument '{}' of the command '{}' is not configured as default" \
-            .format(arg_name, command_name)
+        return f"The argument '{arg_name}' of the command '{command_name}' is not configured as default"
 
     @staticmethod
     @error_code_decorator
     def wrong_is_array_argument(arg_name, command_name):
-        return "The argument '{}' of the command '{}' is not configured as array input." \
-            .format(arg_name, command_name)
+        return f"The argument '{arg_name}' of the command '{command_name}' is not configured as array input."
 
     @staticmethod
     @error_code_decorator
     def no_default_arg(command_name):
-        return "Could not find default argument " \
-               "{} in command {}".format(command_name, command_name)
+        return f"Could not find default argument {command_name} in command {command_name}"
 
     @staticmethod
     @error_code_decorator
     def missing_reputation(command_name, reputation_output, context_standard):
-        return "The outputs of the reputation command {} aren't valid. The {} outputs is missing. " \
-               "Fix according to context standard {} " \
-            .format(command_name, reputation_output, context_standard)
+        return f"The outputs of the reputation command {command_name} aren't valid. The {reputation_output} outputs is missing. Fix according to context standard {context_standard} "
 
     @staticmethod
     @error_code_decorator
@@ -707,17 +700,16 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def duplicate_arg_in_file(arg, command_name=None):
-        err_msg = "The argument '{}' is duplicated".format(arg)
+        err_msg = f"The argument '{arg}' is duplicated"
         if command_name:
-            err_msg += " in '{}'.".format(command_name)
+            err_msg += f" in '{command_name}'."
         err_msg += ", please remove one of its appearances."
         return err_msg
 
     @staticmethod
     @error_code_decorator
     def duplicate_param(param_name):
-        return "The parameter '{}' of the " \
-               "file is duplicated, please remove one of its appearances.".format(param_name)
+        return f"The parameter '{param_name}' of the file is duplicated, please remove one of its appearances."
 
     @staticmethod
     @error_code_decorator
@@ -727,12 +719,12 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def added_required_fields(field):
-        return "You've added required, the field is '{}'".format(field)
+        return f"You've added required, the field is '{field}'"
 
     @staticmethod
     @error_code_decorator
     def removed_integration_parameters(field):
-        return "You've removed integration parameters, the removed parameters are '{}'".format(field)
+        return f"You've removed integration parameters, the removed parameters are '{field}'"
 
     @staticmethod
     @error_code_decorator
@@ -743,11 +735,11 @@ class Errors:
 
     @staticmethod
     def suggest_server_allowlist_fix(words=None):
-        words = words if words else ['incident']
+        words = words or ['incident']
         return f"To fix the problem, remove the words {words}, " \
-               f"or add them to the whitelist named argsExceptionsList in:\n" \
-               f"https://github.com/demisto/server/blob/57fbe417ae420c41ee12a9beb850ff4672209af8/services/" \
-               f"servicemodule_test.go#L8273"
+                   f"or add them to the whitelist named argsExceptionsList in:\n" \
+                   f"https://github.com/demisto/server/blob/57fbe417ae420c41ee12a9beb850ff4672209af8/services/" \
+                   f"servicemodule_test.go#L8273"
 
     @staticmethod
     @error_code_decorator
@@ -758,19 +750,17 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def not_used_display_name(field_name):
-        return "The display details for {} will not be used " \
-               "due to the type of the parameter".format(field_name)
+        return f"The display details for {field_name} will not be used due to the type of the parameter"
 
     @staticmethod
     @error_code_decorator
     def empty_display_configuration(field_name):
-        return "No display details were entered for the field {}".format(field_name)
+        return f"No display details were entered for the field {field_name}"
 
     @staticmethod
     @error_code_decorator
     def feed_wrong_from_version(given_fromversion, needed_from_version="5.5.0"):
-        return "This is a feed and has wrong fromversion. got `{}` expected `{}`" \
-            .format(given_fromversion, needed_from_version)
+        return f"This is a feed and has wrong fromversion. got `{given_fromversion}` expected `{needed_from_version}`"
 
     @staticmethod
     @error_code_decorator
@@ -939,45 +929,38 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def dbot_invalid_output(command_name, missing_outputs, context_standard):
-        return "The DBotScore outputs of the reputation command {} aren't valid. Missing: {}. " \
-               "Fix according to context standard {} ".format(command_name, missing_outputs,
-                                                              context_standard)
+        return f"The DBotScore outputs of the reputation command {command_name} aren't valid. Missing: {missing_outputs}. Fix according to context standard {context_standard} "
 
     @staticmethod
     @error_code_decorator
     def dbot_invalid_description(command_name, missing_descriptions, context_standard):
-        return "The DBotScore description of the reputation command {} aren't valid. Missing: {}. " \
-               "Fix according to context standard {} " \
-            .format(command_name, missing_descriptions, context_standard)
+        return f"The DBotScore description of the reputation command {command_name} aren't valid. Missing: {missing_descriptions}. Fix according to context standard {context_standard} "
 
     @classmethod
     @error_code_decorator
     def breaking_backwards_subtype(cls):
-        return "{}, You've changed the subtype, please undo.".format(cls.BACKWARDS)
+        return f"{cls.BACKWARDS}, You've changed the subtype, please undo."
 
     @classmethod
     @error_code_decorator
     def breaking_backwards_context(cls):
-        return "{}, You've changed the context in the file," \
-               " please undo.".format(cls.BACKWARDS)
+        return f"{cls.BACKWARDS}, You've changed the context in the file, please undo."
 
     @classmethod
     @error_code_decorator
     def breaking_backwards_command(cls, old_command):
-        return "{}, You've changed the context in the file,please " \
-               "undo. the command is:\n{}".format(cls.BACKWARDS, old_command)
+        return f"{cls.BACKWARDS}, You've changed the context in the file,please undo. the command is:\n{old_command}"
 
     @classmethod
     @error_code_decorator
     def breaking_backwards_arg_changed(cls):
-        return "{}, You've changed the name of an arg in " \
-               "the file, please undo.".format(cls.BACKWARDS)
+        return f"{cls.BACKWARDS}, You've changed the name of an arg in the file, please undo."
 
     @classmethod
     @error_code_decorator
     def breaking_backwards_command_arg_changed(cls, commands_ls):
-        error_msg = "{}, Your updates to this file contains changes to a name or an argument of an existing " \
-                    "command(s).\nPlease undo you changes to the following command(s):\n".format(cls.BACKWARDS)
+        error_msg = f"{cls.BACKWARDS}, Your updates to this file contains changes to a name or an argument of an existing command(s).\nPlease undo you changes to the following command(s):\n"
+
         error_msg += '\n'.join(commands_ls)
         return error_msg
 
@@ -1043,8 +1026,8 @@ class Errors:
         docker_hub_link = f'https://hub.docker.com/r/{docker_image_name}/tags'
         iron_bank_link = f'https://repo1.dso.mil/dsop/opensource/palo-alto-networks/{docker_image_name}/'
         return f'You can check for the most updated version of {docker_image_name} ' \
-               f'here: {iron_bank_link if is_iron_bank else docker_hub_link} \n' \
-               f'To update the docker image run:\ndemisto-sdk format -ud -i {file_path}\n'
+                   f'here: {iron_bank_link if is_iron_bank else docker_hub_link} \n' \
+                   f'To update the docker image run:\ndemisto-sdk format -ud -i {file_path}\n'
 
     @staticmethod
     @error_code_decorator
@@ -1209,7 +1192,7 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def missing_release_notes(rn_path):
-        return 'Missing release notes, Please add it under {}'.format(rn_path)
+        return f'Missing release notes, Please add it under {rn_path}'
 
     @staticmethod
     @error_code_decorator
@@ -1831,14 +1814,14 @@ class Errors:
                       'general_readme_absolute_error': Errors.invalid_readme_image_absolute_path_error,
                       'branch_name_readme_absolute_error': Errors.branch_name_in_readme_image_absolute_path_error,
                       'insert_image_link_error': Errors.invalid_readme_insert_image_link_error} \
-            .get(error_type, lambda x: f'Unexpected error when testing {x}')(path)
+                .get(error_type, lambda x: f'Unexpected error when testing {x}')(path)
 
-        return error + f"\n{error_body}"
+        return f"{error}\n{error_body}"
 
     @staticmethod
     @error_code_decorator
     def wrong_version_reputations(object_id, version):
-        return "Reputation object with id {} must have version {}".format(object_id, version)
+        return f"Reputation object with id {object_id} must have version {version}"
 
     @staticmethod
     @error_code_decorator
@@ -1885,7 +1868,7 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def wrong_file_extension(file_extension, accepted_extensions):
-        return "File extension {} is not valid. accepted {}".format(file_extension, accepted_extensions)
+        return f"File extension {file_extension} is not valid. accepted {accepted_extensions}"
 
     @staticmethod
     @error_code_decorator
@@ -1973,11 +1956,15 @@ class Errors:
     @staticmethod
     @error_code_decorator
     def unexpected_field_values_in_non_feed_job(found_selected_fields: bool, found_is_all_fields: bool):
-        found: List[str] = []
-        for key, value in {found_selected_fields: 'selectedFeeds',
-                           found_is_all_fields: 'isAllFields'}.items():
-            if key:
-                found.append(value)
+        found: List[str] = [
+            value
+            for key, value in {
+                found_selected_fields: 'selectedFeeds',
+                found_is_all_fields: 'isAllFields',
+            }.items()
+            if key
+        ]
+
         return f'Job objects cannot have non-empty {" or ".join(found)} when isFeed is set to false.'
 
     @staticmethod
@@ -2174,7 +2161,7 @@ class Errors:
 
     @staticmethod
     def wrong_filename(file_type):
-        return 'This is not a valid {} filename.'.format(file_type)
+        return f'This is not a valid {file_type} filename.'
 
     @staticmethod
     def wrong_path():
@@ -2182,12 +2169,11 @@ class Errors:
 
     @staticmethod
     def beta_in_str(field):
-        return "Field '{}' should NOT contain the substring \"beta\" in a new beta integration. " \
-               "please change the id in the file.".format(field)
+        return f"""Field '{field}' should NOT contain the substring \"beta\" in a new beta integration. please change the id in the file."""
 
     @classmethod
     def breaking_backwards_no_old_script(cls, e):
-        return "{}\n{}, Could not find the old file.".format(cls.BACKWARDS, str(e))
+        return f"{cls.BACKWARDS}\n{str(e)}, Could not find the old file."
 
     @staticmethod
     def id_might_changed():
@@ -2207,12 +2193,11 @@ class Errors:
 
     @staticmethod
     def no_common_server_python(path):
-        return "Could not get CommonServerPythonScript.py file. Please download it manually from {} and " \
-               "add it to the root of the repository.".format(path)
+        return f"Could not get CommonServerPythonScript.py file. Please download it manually from {path} and add it to the root of the repository."
 
     @staticmethod
     def no_yml_file(file_path):
-        return "No yml files were found in {} directory.".format(file_path)
+        return f"No yml files were found in {file_path} directory."
 
     @staticmethod
     @error_code_decorator

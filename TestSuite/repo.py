@@ -28,7 +28,7 @@ class Repo:
     """
 
     def __init__(self, tmpdir: Path):
-        self.packs: List[Pack] = list()
+        self.packs: List[Pack] = []
         self._tmpdir = tmpdir
         self._packs_path = tmpdir / 'Packs'
         self._packs_path.mkdir()

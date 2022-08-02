@@ -61,9 +61,9 @@ class WidgetDependencies:
 # Playbook class helper function
 def get_new_task_number(playbook: Playbook):
     try:
-        playbook_tasks = list(playbook.yml.read_dict().get('tasks').keys())
-
-        if playbook_tasks:
+        if playbook_tasks := list(
+            playbook.yml.read_dict().get('tasks').keys()
+        ):
             return max(int(task_num) for task_num in playbook_tasks) + 1
 
         playbook.yml.update({'starttaskid': '0'})
@@ -803,9 +803,12 @@ class IncidentFieldDependencies:
 CLASSES = [IntegrationDependencies, PlaybookDependencies, ScriptDependencies, ClassifierDependencies,
            MapperDependencies, IncidentTypeDependencies, WidgetDependencies,
            IndicatorTypeDependencies, LayoutDependencies, LayoutcontainerDependencies, IncidentFieldDependencies]
-METHODS_POOL: list = \
-    [(method_name, entity_class) for entity_class in CLASSES for method_name in list(entity_class.__dict__.keys())
-     if '_' != method_name[0]]
+METHODS_POOL: list = [
+    (method_name, entity_class)
+    for entity_class in CLASSES
+    for method_name in list(entity_class.__dict__.keys())
+    if method_name[0] != '_'
+]
 
 
 def get_entity_by_pack_number_and_entity_type(repo, pack_number, entity_type):
@@ -880,7 +883,7 @@ def create_inputs_for_method(repo, current_pack, inputs_arguments):
             number_of_items_in_list = random.randint(1, 5)
 
             input_argument = []
-            for i in range(number_of_items_in_list):
+            for _ in range(number_of_items_in_list):
                 pack_to_take_entity_from = random.choice(range(1, number_of_packs))
                 input_argument.append(get_entity_by_pack_number_and_entity_type(repo, pack_to_take_entity_from,
                                                                                 LIST_ARGUMENTS_TO_METHODS[arg_type]))
@@ -919,7 +922,7 @@ def run_random_methods(repo, current_pack, current_methods_pool, number_of_metho
     """
     all_dependencies = set()
 
-    for i in range(number_of_methods_to_choose):
+    for _ in range(number_of_methods_to_choose):
         chosen_method = random.choice(current_methods_pool)
         current_methods_pool.remove(chosen_method)
 
@@ -1004,9 +1007,12 @@ def test_specific_entity(mocker, repo, entity_class):
     repo.setup_content_repo(number_of_packs)
     repo.setup_one_pack('CommonTypes')
 
-    methods_pool: list = \
-        [(method_name, entity_class) for method_name in list(entity_class.__dict__.keys())
-         if '_' != method_name[0]]
+    methods_pool: list = [
+        (method_name, entity_class)
+        for method_name in list(entity_class.__dict__.keys())
+        if method_name[0] != '_'
+    ]
+
 
     dependencies = run_random_methods(repo, 0, methods_pool, len(methods_pool))
 

@@ -131,8 +131,7 @@ class ReadMeValidator(BaseValidator):
         self.file_path = Path(file_path)
         self.pack_path = self.file_path.parent
         self.node_modules_path = self.content_path / Path('node_modules')
-        with open(self.file_path) as f:
-            readme_content = f.read()
+        readme_content = Path(self.file_path).read_text()
         self.readme_content = readme_content
 
     def is_valid_file(self) -> bool:
@@ -245,9 +244,7 @@ class ReadMeValidator(BaseValidator):
                 missing_module.extend(REQUIRED_MDX_PACKS)
             else:
                 deps = json.loads(stdout).get('dependencies', {})
-                for pack in REQUIRED_MDX_PACKS:
-                    if pack not in deps:
-                        missing_module.append(pack)
+                missing_module.extend(pack for pack in REQUIRED_MDX_PACKS if pack not in deps)
         if missing_module:
             valid = False
             print_warning(f"The npm modules: {missing_module} are not installed, Readme mdx validation skipped. Use "
@@ -261,7 +258,7 @@ class ReadMeValidator(BaseValidator):
             return True
         # use some heuristics to try to figure out if this is html
         return self.readme_content.startswith('<p>') or self.readme_content.startswith('<!DOCTYPE html>') or \
-            ('<thead>' in self.readme_content and '<tbody>' in self.readme_content)
+                ('<thead>' in self.readme_content and '<tbody>' in self.readme_content)
 
     @error_codes('RM101')
     def is_image_path_valid(self) -> bool:
@@ -270,10 +267,11 @@ class ReadMeValidator(BaseValidator):
         Returns:
             bool: True If all links are valid else False.
         """
-        invalid_paths = re.findall(
-            r'(\!\[.*?\]|src\=)(\(|\")(https://github.com/demisto/content/(?!raw).*?)(\)|\")', self.readme_content,
-            re.IGNORECASE)
-        if invalid_paths:
+        if invalid_paths := re.findall(
+            r'(\!\[.*?\]|src\=)(\(|\")(https://github.com/demisto/content/(?!raw).*?)(\)|\")',
+            self.readme_content,
+            re.IGNORECASE,
+        ):
             for path in invalid_paths:
                 path = path[2]
                 alternative_path = path.replace('blob', 'raw')
@@ -289,10 +287,12 @@ class ReadMeValidator(BaseValidator):
             bool: True If all links both relative and absolute are valid else False.
         """
         # If there are errors in one of the following validations return False
-        if any([self.check_readme_relative_image_paths(),
-                self.check_readme_absolute_image_paths()]):
-            return False
-        return True
+        return not any(
+            [
+                self.check_readme_relative_image_paths(),
+                self.check_readme_absolute_image_paths(),
+            ]
+        )
 
     def verify_readme_relative_urls(self) -> bool:
         """ Validate readme (not pack readme) relative urls.
@@ -323,10 +323,12 @@ class ReadMeValidator(BaseValidator):
             # striping in case there are whitespaces at the beginning/ending of url.
             error_message, error_code = Errors.invalid_readme_relative_url_error(url_link.get_url())
             if error_code and error_message:  # error was found
-                formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path,
-                                                    should_print=should_print_error)
-                # if error is None it should be ignored
-                if formatted_error:
+                if formatted_error := self.handle_error(
+                    error_message,
+                    error_code,
+                    file_path=self.file_path,
+                    should_print=should_print_error,
+                ):
                     error_list.append(formatted_error)
 
         return error_list
@@ -362,16 +364,23 @@ class ReadMeValidator(BaseValidator):
             if 'Insert the link to your image here' in relative_path:
                 # the line is generated automatically in playbooks readme, the user should replace it with
                 # an image or remove the line.
-                error_message, error_code = Errors.invalid_readme_image_error(prefix + f'({relative_path})',
-                                                                              error_type='insert_image_link_error')
+                error_message, error_code = Errors.invalid_readme_image_error(
+                    f'{prefix}({relative_path})',
+                    error_type='insert_image_link_error',
+                )
+
             elif is_pack_readme:
-                error_message, error_code = Errors.invalid_readme_image_error(prefix + f'({relative_path})',
-                                                                              error_type='pack_readme_relative_error')
-            else:
-                # generates absolute path from relative and checks for the file existence.
-                if not os.path.isfile(os.path.join(self.file_path.parent, relative_path)):
-                    error_message, error_code = Errors.invalid_readme_image_error(prefix + f'({relative_path})',
-                                                                                  error_type='general_readme_relative_error')
+                error_message, error_code = Errors.invalid_readme_image_error(
+                    f'{prefix}({relative_path})',
+                    error_type='pack_readme_relative_error',
+                )
+
+            elif not os.path.isfile(os.path.join(self.file_path.parent, relative_path)):
+                error_message, error_code = Errors.invalid_readme_image_error(
+                    f'{prefix}({relative_path})',
+                    error_type='general_readme_relative_error',
+                )
+
             if error_code and error_message:  # error was found
                 formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path,
                                                     should_print=should_print_error)
@@ -411,24 +420,36 @@ class ReadMeValidator(BaseValidator):
                 # example 'https://raw.githubusercontent.com/demisto/content/<branch-name>/Packs/.../image.png'
                 url_path_elem_list = urlparse(img_url).path.split('/')[1:]
                 if len(url_path_elem_list) >= 3 and \
-                        (url_path_elem_list[2] == working_branch_name and working_branch_name != 'master'):
-                    error_message, error_code = Errors.invalid_readme_image_error(prefix + f'({img_url})',
-                                                                                  error_type='branch_name_readme_absolute_error')
+                            (url_path_elem_list[2] == working_branch_name and working_branch_name != 'master'):
+                    error_message, error_code = Errors.invalid_readme_image_error(
+                        f'{prefix}({img_url})',
+                        error_type='branch_name_readme_absolute_error',
+                    )
+
                 else:
                     try:
                         get_url_with_retries(img_url, retries=5, backoff_factor=1, timeout=10)
                     except HTTPError as error:
-                        error_message, error_code = Errors.invalid_readme_image_error(prefix + f'({img_url})',
-                                                                                      error_type='general_readme_absolute_error',
-                                                                                      response=error.response)
+                        (
+                            error_message,
+                            error_code,
+                        ) = Errors.invalid_readme_image_error(
+                            f'{prefix}({img_url})',
+                            error_type='general_readme_absolute_error',
+                            response=error.response,
+                        )
+
             except Exception as ex:
                 click.secho(f"Could not validate the image link: {img_url}\n {ex}", fg='yellow')
                 continue
 
             if error_message and error_code:
-                formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path,
-                                                    should_print=should_print_error)
-                if formatted_error:
+                if formatted_error := self.handle_error(
+                    error_message,
+                    error_code,
+                    file_path=self.file_path,
+                    should_print=should_print_error,
+                ):
                     error_list.append(formatted_error)
 
         return error_list
@@ -446,15 +467,18 @@ class ReadMeValidator(BaseValidator):
         is_valid = True
         errors = ""
         for section in SECTIONS:
-            found_section = re.findall(rf'(## {section}\n*)(-*\s*\n\n?)?(\s*.*)', self.readme_content, re.IGNORECASE)
-            if found_section:
+            if found_section := re.findall(
+                rf'(## {section}\n*)(-*\s*\n\n?)?(\s*.*)',
+                self.readme_content,
+                re.IGNORECASE,
+            ):
                 line_after_headline = str(found_section[0][2])
                 # checks if the line after the section's headline is another headline or empty
-                if not line_after_headline or line_after_headline.startswith("##"):
-                    # assuming that a sub headline is part of the section
-                    if not line_after_headline.startswith("###"):
-                        errors += f'{section} is empty, please elaborate or delete the section.\n'
-                        is_valid = False
+                if (
+                    not line_after_headline or line_after_headline.startswith("##")
+                ) and not line_after_headline.startswith("###"):
+                    errors += f'{section} is empty, please elaborate or delete the section.\n'
+                    is_valid = False
 
         if not is_valid:
             error_message, error_code = Errors.readme_error(errors)
@@ -479,8 +503,9 @@ class ReadMeValidator(BaseValidator):
             return errors  # returns empty string
 
         for section in sections_list:
-            required_section = re.findall(rf'{section}', self.readme_content, re.IGNORECASE)
-            if required_section:
+            if required_section := re.findall(
+                rf'{section}', self.readme_content, re.IGNORECASE
+            ):
                 errors += f'Replace "{section}" with a suitable info.\n'
         return errors
 
@@ -510,9 +535,9 @@ class ReadMeValidator(BaseValidator):
         readme_size = len(self.readme_content)
         if 1 <= readme_size <= self.MINIMUM_README_LENGTH:
             error = f'Your Pack README is too small ({readme_size} chars). Please move its content to the pack ' \
-                    'description or add more useful information to the Pack README. ' \
-                    'Pack README files are expected to include a few sentences about the pack and/or images.' \
-                    f'\nFile "{self.content_path}/{self.file_path}", line 0'
+                        'description or add more useful information to the Pack README. ' \
+                        'Pack README files are expected to include a few sentences about the pack and/or images.' \
+                        f'\nFile "{self.content_path}/{self.file_path}", line 0'
             error_message, error_code = Errors.readme_error(error)
             self.handle_error(error_message, error_code, file_path=self.file_path)
             is_valid = False
@@ -556,9 +581,9 @@ class ReadMeValidator(BaseValidator):
         # so no duplicates errors will be created:
         errors, ignored_errors = self._get_error_lists()
         if f'{self.file_path} - [{missing_from_readme_error_code}]' in ignored_errors \
-                or f'{self.file_path} - [{missing_from_readme_error_code}]' in errors \
-                or f'{yml_file_path} - [{missing_from_yml_error_code}]' in ignored_errors \
-                or f'{yml_file_path} - [{missing_from_yml_error_code}]' in errors:
+                    or f'{self.file_path} - [{missing_from_readme_error_code}]' in errors \
+                    or f'{yml_file_path} - [{missing_from_yml_error_code}]' in ignored_errors \
+                    or f'{yml_file_path} - [{missing_from_yml_error_code}]' in errors:
             return False
 
         # get YML file's content:
@@ -601,10 +626,7 @@ class ReadMeValidator(BaseValidator):
                 line = line.lower()
             if to_split:
                 line = line.split()  # type: ignore
-            for text in text_list:
-                if text in line:
-                    invalid_lines.append(line_num + 1)
-
+            invalid_lines.extend(line_num + 1 for text in text_list if text in line)
         return invalid_lines
 
     @error_codes('RM106')
@@ -621,9 +643,9 @@ class ReadMeValidator(BaseValidator):
             return True
 
         is_valid = True
-        invalid_lines = self.check_readme_content_contain_text(text_list=['demisto ', ' demisto'], is_lower=True)
-
-        if invalid_lines:
+        if invalid_lines := self.check_readme_content_contain_text(
+            text_list=['demisto ', ' demisto'], is_lower=True
+        ):
             error_message, error_code = Errors.readme_contains_demisto_word(invalid_lines)
             if self.handle_error(error_message, error_code, file_path=self.file_path):
                 is_valid = False
@@ -639,9 +661,9 @@ class ReadMeValidator(BaseValidator):
             True if '%%FILL HERE%%' does not exist in the README content, and False if it does.
         """
         is_valid = True
-        invalid_lines = self.check_readme_content_contain_text(text_list=['%%FILL HERE%%'])
-
-        if invalid_lines:
+        if invalid_lines := self.check_readme_content_contain_text(
+            text_list=['%%FILL HERE%%']
+        ):
             error_message, error_code = Errors.template_sentence_in_readme(invalid_lines)
             if self.handle_error(error_message, error_code, file_path=self.file_path):
                 is_valid = False
@@ -657,9 +679,9 @@ class ReadMeValidator(BaseValidator):
             True if related words does not exist in the README content, and False if it does.
         """
         is_valid = True
-        invalid_lines = self.check_readme_content_contain_text(text_list=['BSD', 'MIT', 'Copyright', 'proprietary'], to_split=True)
-
-        if invalid_lines:
+        if invalid_lines := self.check_readme_content_contain_text(
+            text_list=['BSD', 'MIT', 'Copyright', 'proprietary'], to_split=True
+        ):
             error_message, error_code = Errors.copyright_section_in_readme_error(invalid_lines)
             if self.handle_error(error_message, error_code, file_path=self.file_path):
                 is_valid = False

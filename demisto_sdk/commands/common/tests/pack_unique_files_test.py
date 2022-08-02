@@ -97,7 +97,7 @@ class TestPackUniqueFilesValidator:
         mocker.patch.object(tools, 'get_dict_from_file', return_value=({'approved_list': []}, 'json'))
         assert not self.validator.are_valid_files(id_set_validations=False)
         fake_validator = PackUniqueFilesValidator('fake')
-        mocker.patch.object(fake_validator, '_read_metadata_content', return_value=dict())
+        mocker.patch.object(fake_validator, '_read_metadata_content', return_value={})
         assert fake_validator.are_valid_files(id_set_validations=False)
 
     def test_validate_pack_metadata(self, mocker):
@@ -107,7 +107,7 @@ class TestPackUniqueFilesValidator:
         mocker.patch.object(tools, 'get_dict_from_file', return_value=({'approved_list': []}, 'json'))
         assert not self.validator.are_valid_files(id_set_validations=False)
         fake_validator = PackUniqueFilesValidator('fake')
-        mocker.patch.object(fake_validator, '_read_metadata_content', return_value=dict())
+        mocker.patch.object(fake_validator, '_read_metadata_content', return_value={})
         assert fake_validator.are_valid_files(id_set_validations=False)
 
     def test_validate_partner_contribute_pack_metadata_no_mail_and_url(self, mocker, repo):
@@ -430,7 +430,7 @@ class TestPackUniqueFilesValidator:
             assert self.validator._is_valid_support_type() == is_valid
             if not is_valid:
                 assert 'Support field should be one of the following: xsoar, partner, developer or community.' in \
-                       self.validator.get_errors()
+                           self.validator.get_errors()
 
     def test_get_master_private_repo_meta_file_running_on_master(self, mocker, repo, capsys):
         """
@@ -517,7 +517,7 @@ class TestPackUniqueFilesValidator:
         res = self.validator.get_master_private_repo_meta_file(str(pack.pack_metadata.path))
         assert not res
         assert "Unable to find previous pack_metadata.json file - skipping price change validation" in \
-               capsys.readouterr().out
+                   capsys.readouterr().out
 
     @pytest.mark.parametrize('text, result', README_INPUT_RESULTS_LIST)
     def test_validate_pack_readme_file_is_not_empty_partner(self, mocker, text, result):
@@ -666,7 +666,7 @@ class TestPackUniqueFilesValidator:
         absolute_urls = ["https://www.good.co.il", "https://example.com", "doc_files/High_Risk_User.png",
                          "https://hreftesting.com"]
         relative_error = 'Relative urls are not supported within README. If this is not a relative url, please add ' \
-                         'an https:// prefix:\n'
+                             'an https:// prefix:\n'
         assert not result
 
         for url in relative_urls:
@@ -677,7 +677,7 @@ class TestPackUniqueFilesValidator:
 
         # no empty links found
         assert '[RM112] - Relative urls are not supported within README. If this is not a relative url, ' \
-               'please add an https:// prefix:\n. ' not in errors
+                   'please add an https:// prefix:\n. ' not in errors
 
     @pytest.mark.parametrize('readme_content, is_valid', [
         ('Hey there, just testing', True),
@@ -711,7 +711,7 @@ class TestPackUniqueFilesValidator:
             assert self.validator.validate_pack_readme_and_pack_description() == is_valid
             if not is_valid:
                 assert 'README.md content is equal to pack description. ' \
-                       'Please remove the duplicate description from README.md file' in self.validator.get_errors()
+                           'Please remove the duplicate description from README.md file' in self.validator.get_errors()
 
     def test_validate_pack_readme_and_pack_description_no_readme_file(self, repo):
         """
@@ -734,7 +734,7 @@ class TestPackUniqueFilesValidator:
             assert self.validator.validate_pack_readme_and_pack_description()
             assert '"README.md" file does not exist, create one in the root of the pack' in self.validator.get_errors()
             assert 'README.md content is equal to pack description. ' \
-                   'Please remove the duplicate description from README.md file' not in self.validator.get_errors()
+                       'Please remove the duplicate description from README.md file' not in self.validator.get_errors()
 
     def test_valid_is_pack_metadata_desc_too_long(self, repo):
         """
@@ -764,8 +764,8 @@ class TestPackUniqueFilesValidator:
             - Ensure warning will be printed.
         """
         pack_description = 'This is will fail cause the description here is too long.' \
-                           'test test test test test test test test test test test test test test test test test' \
-                           ' test test test test test'
+                               'test test test test test test test test test test test test test test test test test' \
+                               ' test test test test test'
         error_desc = 'The description field of the pack_metadata.json file is longer than 130 characters.'
 
         mocker.patch("click.secho")
@@ -794,7 +794,7 @@ class TestPackUniqueFilesValidator:
             res = self.validator.validate_author_image_exists()
             assert res
             assert f'Partners must provide a non-empty author image under the path {author_image_path}.' not in \
-                   self.validator.get_errors()
+                       self.validator.get_errors()
 
     def test_validate_author_image_exists_invalid(self, repo):
         """
@@ -818,7 +818,7 @@ class TestPackUniqueFilesValidator:
             res = self.validator.validate_author_image_exists()
             assert not res
             assert f'Partners must provide a non-empty author image under the path {author_image_path}.' in \
-                   self.validator.get_errors()
+                       self.validator.get_errors()
 
     @pytest.mark.parametrize('pack_metadata, rn_version, create_rn, expected_results', [
         ({"currentVersion": "1.0.1"}, "1.0.1", True, True),

@@ -63,12 +63,11 @@ class YAMLContentUnifiedObject(YAMLContentObject):
             1. Script - Loacted under main keys.
             2. Integration - Located under second level key (script -> script).
         """
-        if self._content_type == FileType.INTEGRATION:
-            script = self.get('script', {})
-        else:
-            script = self.to_dict()
-
-        return script
+        return (
+            self.get('script', {})
+            if self._content_type == FileType.INTEGRATION
+            else self.to_dict()
+        )
 
     @property
     def docker_image(self) -> str:
@@ -199,22 +198,16 @@ class YAMLContentUnifiedObject(YAMLContentObject):
             created_files.extend(super().dump(dest_dir=dest_dir, yaml=False,
                                               readme=readme, change_log=change_log))
 
-        # Handling case where object is unified
-        else:
-            # Handling case where object include docker_image_4_5, In that case should split the file to:
-            #   1. <original_file>
-            #   2. <original_file_name>_4_5.yml
-            if self.docker_image_4_5:
-                # Split file as described above.
-                created_files.extend(self._split_yaml_4_5_0(dest_dir))
-                # Adding readme and changelog if requested.
-                created_files.extend(super().dump(dest_dir=dest_dir, yaml=False,
-                                                  readme=readme, change_log=change_log))
+        elif self.docker_image_4_5:
+            # Split file as described above.
+            created_files.extend(self._split_yaml_4_5_0(dest_dir))
+            # Adding readme and changelog if requested.
+            created_files.extend(super().dump(dest_dir=dest_dir, yaml=False,
+                                              readme=readme, change_log=change_log))
 
-            # Handling case where copy of object should be without modifications.
-            else:
-                # Dump as YAMLContentObject
-                created_files.extend(super().dump(dest_dir=dest_dir,
-                                                  readme=readme, change_log=change_log))
+        else:
+            # Dump as YAMLContentObject
+            created_files.extend(super().dump(dest_dir=dest_dir,
+                                              readme=readme, change_log=change_log))
 
         return created_files

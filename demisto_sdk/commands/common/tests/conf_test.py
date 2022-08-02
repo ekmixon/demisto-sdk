@@ -210,7 +210,7 @@ def test_has_unittests(mocker, integration, has_tests):
     test_file = None
     try:
         if has_tests:
-            test_file: Path = Path(integration.path) / (integration.name + '_test.py')
+            test_file: Path = Path(integration.path) / f'{integration.name}_test.py'
             test_file.touch()
         res = validator.has_unittest(integration.yml.path)
         assert res == has_tests
@@ -223,4 +223,4 @@ def test_get_test_path(mocker, integration):
     mocker.patch.object(ConfJsonValidator, 'load_conf_file', return_value={})
     validator = ConfJsonValidator()
     res = validator.get_test_path(integration.yml.path)
-    assert res.parts[-1] == integration.name + '_test.py'
+    assert res.parts[-1] == f'{integration.name}_test.py'

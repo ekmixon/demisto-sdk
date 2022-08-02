@@ -136,12 +136,10 @@ def does_dict_have_alternative_key(data: dict) -> bool:
         if isinstance(key, str) and key.endswith('_x2'):
             return True
 
-    for key, value in data.items():
-        if isinstance(value, dict):
-            if does_dict_have_alternative_key(value):
-                return True
-
-    return False
+    return any(
+        isinstance(value, dict) and does_dict_have_alternative_key(value)
+        for key, value in data.items()
+    )
 
 
 def should_skip_item_by_mp(file_path: str, marketplace: str, excluded_items_from_id_set: dict,
@@ -402,16 +400,18 @@ def get_integration_data(file_path, packs: Dict[str, Dict] = None):
     is_fetch = script.get('isfetch', False)
     is_feed = script.get('feed', False)
     marketplaces = get_item_marketplaces(file_path, item_data=data_dictionary, packs=packs)
-    mappers = set()
+    deprecated_commands = [
+        command.get('name')
+        for command in commands
+        if command.get('deprecated', False)
+    ]
 
-    deprecated_commands = []
-    for command in commands:
-        if command.get('deprecated', False):
-            deprecated_commands.append(command.get('name'))
+    mappers = {
+        data_dictionary.get(mapper)
+        for mapper in ['defaultmapperin', 'defaultmapperout']
+        if data_dictionary.get(mapper)
+    }
 
-    for mapper in ['defaultmapperin', 'defaultmapperout']:
-        if data_dictionary.get(mapper):
-            mappers.add(data_dictionary.get(mapper))
     integration_data = create_common_entity_data(path=file_path,
                                                  name=name,
                                                  display_name=display_name,
@@ -518,10 +518,9 @@ def get_incident_fields_by_playbook_input(playbook_input):
     elif input_type == 'complex':
         root_value = str(input_value.get('root', ''))
         accessor_value = str(input_value.get('accessor'))
-        combined_value = root_value + '.' + accessor_value  # concatenate the strings
+        combined_value = f'{root_value}.{accessor_value}'
 
-        field_name = re.match(r'incident\.([^.]+)', combined_value)
-        if field_name:
+        if field_name := re.match(r'incident\.([^.]+)', combined_value):
             field_name = field_name.groups()[0]
             if field_name not in BUILT_IN_FIELDS:
                 dependent_incident_fields.add(field_name)
@@ -541,9 +540,7 @@ def get_dependent_incident_and_indicator_fields(data_dictionary):
     dependent_incident_fields = set()
     dependent_indicator_fields = set()
     for task in data_dictionary.get('tasks', {}).values():
-        # incident fields dependent by field mapping
-        related_incident_fields = task.get('fieldMapping')
-        if related_incident_fields:
+        if related_incident_fields := task.get('fieldMapping'):
             for incident_field in related_incident_fields:
                 if incident_field not in BUILT_IN_FIELDS:
                     dependent_incident_fields.add(incident_field.get('incidentfield'))
@@ -790,16 +787,12 @@ def get_layouts_scripts_ids(layout_tabs):
                 # Find dynamic sections scripts:
                 query_type = section.get('queryType')
                 if query_type == 'script':
-                    script_id = section.get('query')
-                    if script_id:
+                    if script_id := section.get('query'):
                         scripts.append(script_id)
 
-                # Find Buttons scripts:
-                items = section.get('items', [])
-                if items:
+                if items := section.get('items', []):
                     for item in items:
-                        script_id = item.get('scriptId')
-                        if script_id:
+                        if script_id := item.get('scriptId'):
                             scripts.append(script_id)
 
     return scripts
@@ -846,25 +839,17 @@ def get_incident_field_data(path: str, incident_types: List, packs: Dict[str, Di
     pack = get_pack_name(path)
     marketplaces = get_item_marketplaces(path, item_data=json_data, packs=packs)
     all_associated_types: set = set()
-    all_scripts = set()
-
-    associated_types = json_data.get('associatedTypes')
-    if associated_types:
+    if associated_types := json_data.get('associatedTypes'):
         all_associated_types = set(associated_types)
 
-    system_associated_types = json_data.get('systemAssociatedTypes')
-    if system_associated_types:
+    if system_associated_types := json_data.get('systemAssociatedTypes'):
         all_associated_types = all_associated_types.union(set(system_associated_types))
 
     if 'all' in all_associated_types:
         all_associated_types = {list(incident_type.keys())[0] for incident_type in incident_types}
 
-    scripts = json_data.get('script')
-    if scripts:
-        all_scripts = {scripts}
-
-    field_calculations_scripts = json_data.get('fieldCalcScript')
-    if field_calculations_scripts:
+    all_scripts = {scripts} if (scripts := json_data.get('script')) else set()
+    if field_calculations_scripts := json_data.get('fieldCalcScript'):
         all_scripts = all_scripts.union({field_calculations_scripts})
 
     # save cliName and name of all aliases fields in a single list
@@ -907,7 +892,12 @@ def get_indicator_type_data(path: str, all_integrations: List, packs: Dict[str, 
         if not associated_scripts or associated_scripts == 'null':
             continue
 
-        associated_scripts = [associated_scripts] if not isinstance(associated_scripts, list) else associated_scripts
+        associated_scripts = (
+            associated_scripts
+            if isinstance(associated_scripts, list)
+            else [associated_scripts]
+        )
+
         if associated_scripts:
             all_scripts = all_scripts.union(set(associated_scripts))
 
@@ -974,8 +964,7 @@ def get_classifier_data(path: str, packs: Dict[str, Dict] = None):
 
     transformer = json_data.get('transformer', {})
     if transformer is dict:
-        complex_value = transformer.get('complex', {})
-        if complex_value:
+        if complex_value := transformer.get('complex', {}):
             transformers, filters = get_filters_and_transformers_from_complex_value(complex_value)
 
     data = create_common_entity_data(path=path, name=name, display_name=display_name, to_version=toversion,
@@ -1070,8 +1059,7 @@ def get_mapper_data(path: str, packs: Dict[str, Dict] = None):
             for internal_mapping_key in internal_mapping.keys():
                 fields_mapper = internal_mapping.get(internal_mapping_key, {})
                 if isinstance(fields_mapper, dict):
-                    incident_field_simple = fields_mapper.get('simple')
-                    if incident_field_simple:
+                    if incident_field_simple := fields_mapper.get('simple'):
                         incident_fields_set.add(incident_field_simple)
                     else:
                         incident_field_complex = fields_mapper.get('complex', {})
@@ -1084,8 +1072,7 @@ def get_mapper_data(path: str, packs: Dict[str, Dict] = None):
 
         # get_filters_and_transformers_from_complex_value(list(value.get('internalMapping', {}).values())[0]['complex'])
         for internal_mapping in internal_mapping.values():
-            incident_field_complex = internal_mapping.get('complex', {})
-            if incident_field_complex:
+            if incident_field_complex := internal_mapping.get('complex', {}):
                 transformers, filters = get_filters_and_transformers_from_complex_value(incident_field_complex)
                 all_transformers.update(transformers)
                 all_filters.update(filters)
@@ -1335,7 +1322,7 @@ def process_integration(file_path: str, packs: Dict[str, Dict], marketplace: str
         else:
             # package integration
             package_name = os.path.basename(file_path)
-            file_path = os.path.join(file_path, '{}.yml'.format(package_name))
+            file_path = os.path.join(file_path, f'{package_name}.yml')
             if should_skip_item_by_mp(file_path, marketplace, excluded_items_from_id_set, packs=packs, print_logs=print_logs):
                 return [], excluded_items_from_id_set
             if os.path.isfile(file_path):
@@ -1418,8 +1405,7 @@ def process_incident_fields(file_path: str, packs: Dict[str, Dict], marketplace:
     return res, excluded_items_from_id_set
 
 
-def process_indicator_types(file_path: str, packs: Dict[str, Dict], marketplace: str, print_logs: bool, all_integrations: list) -> \
-        Tuple[list, dict]:
+def process_indicator_types(file_path: str, packs: Dict[str, Dict], marketplace: str, print_logs: bool, all_integrations: list) -> Tuple[list, dict]:
     """
     Process a indicator types JSON file
     Args:
@@ -1441,7 +1427,10 @@ def process_indicator_types(file_path: str, packs: Dict[str, Dict], marketplace:
                 print(f'Skipping {file_path} due to mismatch with the marketplace this id set is generated for.')
             return [], excluded_items_from_id_set
         # ignore old reputations.json files
-        if not os.path.basename(file_path) == 'reputations.json' and find_type(file_path) == FileType.REPUTATION:
+        if (
+            os.path.basename(file_path) != 'reputations.json'
+            and find_type(file_path) == FileType.REPUTATION
+        ):
             if print_logs:
                 print(f'adding {file_path} to id_set')
             res.append(get_indicator_type_data(file_path, all_integrations, packs=packs))
@@ -1628,7 +1617,7 @@ def process_general_items(file_path: str, packs: Dict[str, Dict], marketplace: s
                 res.append(data_extraction_func(file_path, packs=packs))
         else:
             package_name = os.path.basename(file_path)
-            file_path = os.path.join(file_path, '{}.yml'.format(package_name))
+            file_path = os.path.join(file_path, f'{package_name}.yml')
             item_type = find_type(file_path)
             if os.path.isfile(file_path) and item_type in expected_file_types:
                 if should_skip_item_by_mp(file_path, marketplace, excluded_items_from_id_set, packs=packs, print_logs=print_logs, item_type=item_type):
@@ -1685,7 +1674,7 @@ def get_integrations_paths(pack_to_create):
             ['Packs', '*', 'Integrations', '*']
         ]
 
-    integration_files = list()
+    integration_files = []
     for path in path_list:
         integration_files.extend(glob.glob(os.path.join(*path)))
 
@@ -1732,7 +1721,7 @@ def get_general_paths(path, pack_to_create):
             ['Packs', '*', path, '*']
         ]
 
-    files = list()
+    files = []
     for path in path_list:
         files.extend(glob.glob(os.path.join(*path)))
 
@@ -1755,7 +1744,7 @@ def get_generic_entities_paths(path, pack_to_create):
             ['Packs', '*', path, '*', '*.json']
         ]
 
-    files = list()
+    files = []
     for path in path_list:
         files.extend(glob.glob(os.path.join(*path)))
 
@@ -1805,26 +1794,19 @@ def get_generic_field_data(path, generic_types_list, packs: Dict[str, Dict] = No
     pack = get_pack_name(path)
     marketplaces = get_item_marketplaces(path, item_data=json_data, packs=packs)
     all_associated_types: set = set()
-    all_scripts = set()
     definitionId = json_data.get('definitionId')
 
-    associated_types = json_data.get('associatedTypes')
-    if associated_types:
+    if associated_types := json_data.get('associatedTypes'):
         all_associated_types = set(associated_types)
 
-    system_associated_types = json_data.get('systemAssociatedTypes')
-    if system_associated_types:
+    if system_associated_types := json_data.get('systemAssociatedTypes'):
         all_associated_types = all_associated_types.union(set(system_associated_types))
 
     if 'all' in all_associated_types:
         all_associated_types = {list(generic_type.keys())[0] for generic_type in generic_types_list}
 
-    scripts = json_data.get('script')
-    if scripts:
-        all_scripts = {scripts}
-
-    field_calculations_scripts = json_data.get('fieldCalcScript')
-    if field_calculations_scripts:
+    all_scripts = {scripts} if (scripts := json_data.get('script')) else set()
+    if field_calculations_scripts := json_data.get('fieldCalcScript'):
         all_scripts = all_scripts.union({field_calculations_scripts})
 
     data = create_common_entity_data(path=path, name=name, display_name=display_name, to_version=toversion,
@@ -1948,7 +1930,7 @@ class IDSetType(Enum):
 
 class IDSet:
     def __init__(self, id_set_dict=None):
-        self._id_set_dict = id_set_dict if id_set_dict else {}
+        self._id_set_dict = id_set_dict or {}
 
     def get_dict(self):
         return self._id_set_dict
@@ -2002,9 +1984,14 @@ def merge_id_sets(first_id_set_dict: dict, second_id_set_dict: dict, print_logs:
         if object_type != "Packs":
             for obj in object_list:
                 obj_id = list(obj.keys())[0]
-                is_duplicate = has_duplicate(subset, obj_id, object_type, print_logs,
-                                             external_object=obj, is_create_new=False)
-                if is_duplicate:
+                if is_duplicate := has_duplicate(
+                    subset,
+                    obj_id,
+                    object_type,
+                    print_logs,
+                    external_object=obj,
+                    is_create_new=False,
+                ):
                     duplicates.append(obj_id)
                 else:
                     united_id_set.add_to_list(object_type, obj)
@@ -2013,10 +2000,7 @@ def merge_id_sets(first_id_set_dict: dict, second_id_set_dict: dict, print_logs:
             for obj_name, obj_value in object_list.items():
                 united_id_set.add_pack_to_id_set_packs(object_type, obj_name, obj_value)
 
-    if duplicates:
-        return None, duplicates
-
-    return united_id_set, []
+    return (None, duplicates) if duplicates else (united_id_set, [])
 
 
 def re_create_id_set(id_set_path: Optional[str] = DEFAULT_ID_SET_PATH, pack_to_create=None,  # noqa : C901

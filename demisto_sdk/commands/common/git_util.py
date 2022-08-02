@@ -35,9 +35,7 @@ class GitUtil:
         remote, branch = self.handle_prev_ver(prev_ver)
         current_branch_or_hash = self.get_current_git_branch_or_hash()
 
-        # when checking branch against itself only return the last commit.
-        last_commit = self._only_last_commit(prev_ver, requested_status='M')
-        if last_commit:
+        if last_commit := self._only_last_commit(prev_ver, requested_status='M'):
             self.debug_print(debug=debug, status='Modified', staged=set(), committed=last_commit)
             return last_commit
 
@@ -81,11 +79,7 @@ class GitUtil:
             self.debug_print(debug=debug, status='Modified', staged=set(), committed=committed)
             return committed
 
-        untracked = set()  # type: Set
-        if include_untracked:
-            # get all untracked modified files
-            untracked = self._get_untracked_files('M')
-
+        untracked = self._get_untracked_files('M') if include_untracked else set()
         # get all the files that are staged on the branch and identified as modified.
         staged = {Path(os.path.join(item.a_path)) for item
                   in self.repo.head.commit.diff().iter_change_type('M')}.union(untracked).union(untrue_rename_staged)
@@ -130,9 +124,7 @@ class GitUtil:
         remote, branch = self.handle_prev_ver(prev_ver)
         current_branch_or_hash = self.get_current_git_branch_or_hash()
 
-        # when checking branch against itself only return the last commit.
-        last_commit = self._only_last_commit(prev_ver, requested_status='A')
-        if last_commit:
+        if last_commit := self._only_last_commit(prev_ver, requested_status='A'):
             self.debug_print(debug=debug, status='Added', staged=set(), committed=last_commit)
             return last_commit
 
@@ -218,9 +210,7 @@ class GitUtil:
         remote, branch = self.handle_prev_ver(prev_ver)
         current_branch_or_hash = self.get_current_git_branch_or_hash()
 
-        # when checking branch against itself only return the last commit.
-        last_commit = self._only_last_commit(prev_ver, requested_status='D')
-        if last_commit:
+        if last_commit := self._only_last_commit(prev_ver, requested_status='D'):
             return last_commit
 
         committed = set()
@@ -247,19 +237,12 @@ class GitUtil:
         if committed_only:
             return committed
 
-        untracked = set()  # type: Set
-        if include_untracked:
-            # get all untracked deleted files
-            untracked = self._get_untracked_files('D')
-
+        untracked = self._get_untracked_files('D') if include_untracked else set()
         # get all the files that are staged on the branch and identified as added.
         staged = {Path(os.path.join(item.a_path)) for item in
                   self.repo.head.commit.diff().iter_change_type('D')}.union(untracked)
 
-        if staged_only:
-            return staged
-
-        return staged.union(committed)
+        return staged if staged_only else staged.union(committed)
 
     def renamed_files(self, prev_ver: str = '', committed_only: bool = False,
                       staged_only: bool = False, debug: bool = False,
@@ -280,9 +263,7 @@ class GitUtil:
         remote, branch = self.handle_prev_ver(prev_ver)
         current_branch_or_hash = self.get_current_git_branch_or_hash()
 
-        # when checking branch against itself only return the last commit.
-        last_commit = self._only_last_commit(prev_ver, requested_status='R')
-        if last_commit:
+        if last_commit := self._only_last_commit(prev_ver, requested_status='R'):
             self.debug_print(debug=debug, status='Renamed', staged=set(), committed=last_commit)
             return last_commit
 
@@ -312,34 +293,23 @@ class GitUtil:
         if committed_only:
             self.debug_print(debug=debug, status='Renamed', staged=set(), committed=committed)
             if get_only_current_file_names:
-                committed_only_new = {file[1] for file in committed}
-                return committed_only_new
+                return {file[1] for file in committed}
 
             return committed
 
-        untracked = set()  # type:Set
-        if include_untracked:
-            # get all untracked renamed files
-            untracked = self._get_untracked_files('R')
-
+        untracked = self._get_untracked_files('R') if include_untracked else set()
         # get all the files that are staged on the branch and identified as renamed and are with 100% score.
         staged = {(Path(item.a_path), Path(item.b_path)) for item
                   in self.repo.head.commit.diff().iter_change_type('R') if item.score == 100}.union(untracked)
 
         if staged_only:
             self.debug_print(debug=debug, status='Renamed', staged=staged, committed=set())
-            if get_only_current_file_names:
-                staged_only_new = {file[1] for file in staged}
-                return staged_only_new
-
-            return staged
-
+            return {file[1] for file in staged} if get_only_current_file_names else staged
         self.debug_print(debug=debug, status='Renamed', staged=staged, committed=committed)
 
         all_renamed_files = staged.union(committed)
         if get_only_current_file_names:
-            all_renamed_files_only_new = {file[1] for file in all_renamed_files}
-            return all_renamed_files_only_new
+            return {file[1] for file in all_renamed_files}
 
         return all_renamed_files
 
@@ -359,7 +329,7 @@ class GitUtil:
         extracted_paths = set()
         for line in git_status:
             line = line.strip()
-            file_status = line.split()[0].upper() if not line.startswith('?') else 'A'
+            file_status = 'A' if line.startswith('?') else line.split()[0].upper()
             if file_status.startswith(requested_status):
                 if requested_status == 'R':
                     if file_status == 'R100':

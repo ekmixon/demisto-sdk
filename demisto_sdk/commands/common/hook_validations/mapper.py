@@ -68,13 +68,14 @@ class MapperValidator(ContentEntityValidator):
         old_mapper = self.old_file.get('mapping', {})
         current_mapper = self.current_file.get('mapping', {})
 
-        old_incidents_types = {inc for inc in old_mapper}
-        current_incidents_types = {inc for inc in current_mapper}
+        old_incidents_types = set(old_mapper)
+        current_incidents_types = set(current_mapper)
         if not old_incidents_types.issubset(current_incidents_types):
             removed_incident_types = old_incidents_types - current_incidents_types
-            removed_dict = {}
-            for removed in removed_incident_types:
-                removed_dict[removed] = old_mapper[removed]
+            removed_dict = {
+                removed: old_mapper[removed] for removed in removed_incident_types
+            }
+
             error_message, error_code = Errors.removed_incident_types(removed_dict)
             if self.handle_error(error_message, error_code, file_path=self.file_path,
                                  warning=self.structure_validator.quiet_bc):
@@ -85,8 +86,8 @@ class MapperValidator(ContentEntityValidator):
             for inc in old_incidents_types:
                 old_incident_fields = old_mapper[inc].get('internalMapping', {})
                 current_incident_fields = current_mapper[inc].get('internalMapping', {})
-                old_fields = {inc for inc in old_incident_fields}
-                current_fields = {inc for inc in current_incident_fields}
+                old_fields = set(old_incident_fields)
+                current_fields = set(current_incident_fields)
 
                 if not old_fields.issubset(current_fields):
                     removed_fields = old_fields - current_fields
@@ -108,8 +109,9 @@ class MapperValidator(ContentEntityValidator):
         Returns:
             bool. True if from version field is valid, else False.
         """
-        from_version = self.current_file.get('fromVersion', '') or self.current_file.get('fromversion')
-        if from_version:
+        if from_version := self.current_file.get(
+            'fromVersion', ''
+        ) or self.current_file.get('fromversion'):
             self.from_version = from_version
             if LooseVersion(from_version) < LooseVersion(FROM_VERSION):
                 error_message, error_code = Errors.invalid_from_version_in_mapper()
@@ -130,8 +132,9 @@ class MapperValidator(ContentEntityValidator):
         Returns:
             bool. True if to version field is valid, else False.
         """
-        to_version = self.current_file.get('toVersion', '') or self.current_file.get('toversion', '')
-        if to_version:
+        if to_version := self.current_file.get(
+            'toVersion', ''
+        ) or self.current_file.get('toversion', ''):
             self.to_version = to_version
             if LooseVersion(to_version) < LooseVersion(FROM_VERSION):
                 error_message, error_code = Errors.invalid_to_version_in_mapper()
@@ -146,11 +149,14 @@ class MapperValidator(ContentEntityValidator):
         Returns:
             bool. True if to version field is higher than from version field, else False.
         """
-        if self.to_version and self.from_version:
-            if LooseVersion(self.to_version) <= LooseVersion(self.from_version):
-                error_message, error_code = Errors.from_version_higher_to_version()
-                if self.handle_error(error_message, error_code, file_path=self.file_path):
-                    return False
+        if (
+            self.to_version
+            and self.from_version
+            and LooseVersion(self.to_version) <= LooseVersion(self.from_version)
+        ):
+            error_message, error_code = Errors.from_version_higher_to_version()
+            if self.handle_error(error_message, error_code, file_path=self.file_path):
+                return False
         return True
 
     @error_codes('MP104')

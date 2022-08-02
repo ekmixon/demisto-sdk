@@ -133,7 +133,7 @@ def report_time_measurements(group_name='Common', time_measurements_dir='time_me
     """
     if group_name == 'lint':
         for func_name, data in packs.items():
-            data = {k: v for k, v in sorted(data.items(), key=lambda x: max(x[1]), reverse=True)}
+            data = dict(sorted(data.items(), key=lambda x: max(x[1]), reverse=True))
             data = [(k, *v1) for k, v in data.items() for v1 in v]
 
             if 'run_pack' in func_name:  # don't spam stdout too much
@@ -141,9 +141,7 @@ def report_time_measurements(group_name='Common', time_measurements_dir='time_me
             else:
                 write_measure_to_logger(func_name, data, MeasureType.PACKS, debug=True)
             write_measure_to_file(time_measurements_dir, func_name, data, measure_type=MeasureType.PACKS)
-    timers = registered_timers.get(group_name)
-    if timers:
-
+    if timers := registered_timers.get(group_name):
         method_states = [
             [
                 func.__qualname__,

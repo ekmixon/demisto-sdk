@@ -29,9 +29,7 @@ class OrJSON_Handler(XSOAR_Handler):
 
     @staticmethod
     def _indent_level(indent: Optional[int] = None):
-        if indent == 4:
-            return orjson.OPT_INDENT_2
-        return None
+        return orjson.OPT_INDENT_2 if indent == 4 else None
 
     @staticmethod
     def _sort_keys(sort_keys: bool):

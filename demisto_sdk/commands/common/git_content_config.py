@@ -81,7 +81,7 @@ class GitContentConfig:
             repo_hostname: The hostname to use (e.g "code.pan.run", "gitlab.com", "my-hostename.com")
             project_id: The project id, relevant for gitlab.
         """
-        self.current_repository = repo_name if repo_name else None
+        self.current_repository = repo_name or None
         self.project_id: Optional[int] = None
         if project_id:
             git_provider = GitProvider.GitLab
@@ -106,7 +106,7 @@ class GitContentConfig:
             if '@' in parsed_git.host:  # the library sometimes returns hostname as <username>@<hostname>
                 hostname = parsed_git.host.split('@')[1]  # to get proper hostname, without the username or tokens
         if (self.repo_hostname, self.current_repository) not in GitContentConfig.ALLOWED_REPOS or \
-           (self.repo_hostname, self.project_id) not in GitContentConfig.ALLOWED_REPOS:
+               (self.repo_hostname, self.project_id) not in GitContentConfig.ALLOWED_REPOS:
             self._set_repo_config(hostname, organization, repo_name, project_id)  # type: ignore[arg-type]
 
         if self.git_provider == GitProvider.GitHub:
@@ -146,10 +146,10 @@ class GitContentConfig:
             project_id (int, optional): The repo id. Defaults to None.
         """
         gitlab_hostname, gitlab_id = (self._search_gitlab_repo(hostname, project_id=project_id)) or \
-                                     (self._search_gitlab_repo(self.repo_hostname, project_id=project_id)) or \
-                                     (self._search_gitlab_repo(hostname, repo_name=repo_name)) or \
-                                     (self._search_gitlab_repo(self.repo_hostname, repo_name=repo_name)) or \
-                                     (None, None)
+                                         (self._search_gitlab_repo(self.repo_hostname, project_id=project_id)) or \
+                                         (self._search_gitlab_repo(hostname, repo_name=repo_name)) or \
+                                         (self._search_gitlab_repo(self.repo_hostname, repo_name=repo_name)) or \
+                                         (None, None)
 
         if self.git_provider == GitProvider.GitLab and gitlab_id is None:
             self._print_private_repo_warning_if_needed()
@@ -165,8 +165,8 @@ class GitContentConfig:
         else:  # github
             current_repo = f'{organization}/{repo_name}' if organization and repo_name else self.current_repository
             github_hostname, github_repo = self._search_github_repo(hostname, self.current_repository) or \
-                self._search_github_repo(self.repo_hostname, current_repo) \
-                or (None, None)
+                    self._search_github_repo(self.repo_hostname, current_repo) \
+                    or (None, None)
             self.git_provider = GitProvider.GitHub
             if not github_hostname or not github_repo:  # github was not found.
                 self._print_private_repo_warning_if_needed()
@@ -236,8 +236,7 @@ class GitContentConfig:
     @staticmethod
     @lru_cache
     def _search_gitlab_repo(gitlab_hostname: str, repo_name: Optional[str] = None,
-                            project_id: Optional[int] = None) -> \
-            Optional[Tuple[str, int]]:
+                            project_id: Optional[int] = None) -> Optional[Tuple[str, int]]:
         """
         Searches the gitlab API for the repo.
         One of `repo_name` or `project_id` is mandatory.
@@ -252,8 +251,8 @@ class GitContentConfig:
 
         """
         if not gitlab_hostname or \
-                gitlab_hostname == GitContentConfig.GITHUB_USER_CONTENT or \
-                gitlab_hostname == GitContentConfig.GITHUB:
+                    gitlab_hostname == GitContentConfig.GITHUB_USER_CONTENT or \
+                    gitlab_hostname == GitContentConfig.GITHUB:
             return None
         if project_id and (gitlab_hostname, project_id) in GitContentConfig.ALLOWED_REPOS:
             return gitlab_hostname, project_id
@@ -278,9 +277,7 @@ class GitContentConfig:
                 search_results = res.json()
                 assert search_results and isinstance(search_results, list) and isinstance(search_results[0], dict)
                 gitlab_id = search_results[0].get('id')
-                if gitlab_id is None:
-                    return None
-                return gitlab_hostname, gitlab_id
+                return None if gitlab_id is None else (gitlab_hostname, gitlab_id)
             logger.debug('Could not access GitLab api in `_search_gitlab_repo`.')
             if res:
                 logger.debug(f'status code={res.status_code}. reason={res.reason}')

@@ -27,14 +27,15 @@ class Script(YAMLContentUnifiedObject):
         """
         if self.is_unify():
             return client.import_script(file=self.path)
-        else:
-            with tempfile.TemporaryDirectory() as dir:
-                unified_files = self._unify(dir)
-                for file in unified_files:
-                    if (str(file)[-7:] == '_45.yml') == (get_demisto_version(client) < parse('4.6.0')):
-                        # The above condition checks that the file ends in `_45.yml' and the version is 4.5 or less
-                        # or that the file doesn't end in `_45.yml` and the version is higher than 4.5
-                        return client.import_script(file=file)
+        with tempfile.TemporaryDirectory() as dir:
+            unified_files = self._unify(dir)
+            for file in unified_files:
+                if str(file).endswith('_45.yml') == (
+                    get_demisto_version(client) < parse('4.6.0')
+                ):
+                    # The above condition checks that the file ends in `_45.yml' and the version is 4.5 or less
+                    # or that the file doesn't end in `_45.yml` and the version is higher than 4.5
+                    return client.import_script(file=file)
 
     def type(self):
         if TEST_PLAYBOOKS_DIR in self.path.parts:

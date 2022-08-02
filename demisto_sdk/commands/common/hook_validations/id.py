@@ -79,8 +79,9 @@ class IDSetValidations(BaseValidator):
         """
         is_valid = True
         incident_type_name = list(incident_type_data.keys())[0]
-        incident_type_playbook = incident_type_data[incident_type_name].get('playbooks')
-        if incident_type_playbook:
+        if incident_type_playbook := incident_type_data[incident_type_name].get(
+            'playbooks'
+        ):
             # setting initially to false, if the default playbook is in the id_set, it will be valid
             is_valid = False
             for checked_playbook in self.playbook_set:
@@ -113,21 +114,20 @@ class IDSetValidations(BaseValidator):
         incident_field_id = list(incident_field_data.keys())[0]
         incident_field = incident_field_data.get(incident_field_id, {})
         incident_field_name = incident_field.get('name', incident_field_id)
-        scripts_set = set(incident_field.get('scripts', []))
-
-        # Check if the incident field scripts are in the id_set:
-        if scripts_set:
+        if scripts_set := set(incident_field.get('scripts', [])):
             scripts_not_in_id_set = self._get_scripts_that_are_not_in_id_set(scripts_set)
 
         # Add error message if there are scripts that aren't in the id_set:
         if scripts_not_in_id_set:
-            is_valid = False
             scripts_not_in_id_set_str = ', '.join(scripts_not_in_id_set)
             error_message, error_code = Errors.incident_field_non_existent_script_id(incident_field_name,
                                                                                      scripts_not_in_id_set_str)
-            if not self.handle_error(error_message, error_code, file_path=incident_field_file_path,
-                                     suggested_fix=Errors.suggest_fix_non_existent_script_id()):
-                is_valid = True
+            is_valid = not self.handle_error(
+                error_message,
+                error_code,
+                file_path=incident_field_file_path,
+                suggested_fix=Errors.suggest_fix_non_existent_script_id(),
+            )
 
         return is_valid
 
@@ -149,21 +149,20 @@ class IDSetValidations(BaseValidator):
         layouts_container = layouts_container_data.get(layouts_container_id, {})
         layouts_container_name = layouts_container.get('name', layouts_container_id)
         layouts_container_tabs = self._get_layouts_container_tabs(layouts_container)
-        scripts_set = set(get_layouts_scripts_ids(layouts_container_tabs))
-
-        # Check if the layouts container's scripts are in the id_set:
-        if scripts_set:
+        if scripts_set := set(get_layouts_scripts_ids(layouts_container_tabs)):
             scripts_not_in_id_set = self._get_scripts_that_are_not_in_id_set(scripts_set)
 
         # Add error message if there are scripts that aren't in the id_set:
         if scripts_not_in_id_set:
-            is_valid = False
             scripts_not_in_id_set_str = ', '.join(scripts_not_in_id_set)
             error_message, error_code = Errors.layouts_container_non_existent_script_id(layouts_container_name,
                                                                                         scripts_not_in_id_set_str)
-            if not self.handle_error(error_message, error_code, file_path=layouts_container_file_path,
-                                     suggested_fix=Errors.suggest_fix_non_existent_script_id()):
-                is_valid = True
+            is_valid = not self.handle_error(
+                error_message,
+                error_code,
+                file_path=layouts_container_file_path,
+                suggested_fix=Errors.suggest_fix_non_existent_script_id(),
+            )
 
         return is_valid
 
@@ -185,21 +184,20 @@ class IDSetValidations(BaseValidator):
         layout = layout_data.get(layout_id, {})
         layout_name = layout.get('typename', layout_id)
         scripts = layout.get('scripts', [])
-        scripts_set = set(scripts)
-
-        # Check if the layouts container's scripts are in the id_set:
-        if scripts_set:
+        if scripts_set := set(scripts):
             scripts_not_in_id_set = self._get_scripts_that_are_not_in_id_set(scripts_set)
 
         # Add error message if there are scripts that aren't in the id_set:
         if scripts_not_in_id_set:
-            is_valid = False
             scripts_not_in_id_set_str = ', '.join(scripts_not_in_id_set)
             error_message, error_code = Errors.layout_non_existent_script_id(layout_name,
                                                                              scripts_not_in_id_set_str)
-            if not self.handle_error(error_message, error_code, file_path=layout_file_path,
-                                     suggested_fix=Errors.suggest_fix_non_existent_script_id()):
-                is_valid = True
+            is_valid = not self.handle_error(
+                error_message,
+                error_code,
+                file_path=layout_file_path,
+                suggested_fix=Errors.suggest_fix_non_existent_script_id(),
+            )
 
         return is_valid
 
@@ -239,13 +237,11 @@ class IDSetValidations(BaseValidator):
         Returns:
             A new set which includes all scripts of the input scripts set which are not Builtin scripts.
         """
-        not_builtin_scripts_set = set()
-
-        for script_id in scripts_set:
-            if not script_id.startswith('Builtin|||'):
-                not_builtin_scripts_set.add(script_id)
-
-        return not_builtin_scripts_set
+        return {
+            script_id
+            for script_id in scripts_set
+            if not script_id.startswith('Builtin|||')
+        }
 
     def _validate_integration_commands(self, scripts_set):
         """
@@ -286,8 +282,7 @@ class IDSetValidations(BaseValidator):
         layouts_container_fields_with_tabs = ["edit", "indicatorsDetails", "indicatorsQuickView", "quickView",
                                               "details", "detailsV2", "mobile"]
         for field in layouts_container_fields_with_tabs:
-            field_content = layouts_container.get(field)
-            if field_content:
+            if field_content := layouts_container.get(field):
                 tabs = field_content.get('tabs', [])
                 all_tabs.extend(tabs)
 
@@ -304,15 +299,15 @@ class IDSetValidations(BaseValidator):
             bool. Whether the script is valid or not.
         """
         is_valid = True
-        depends_on_commands = script_data.get('depends_on')
-        if depends_on_commands:
+        if depends_on_commands := script_data.get('depends_on'):
             for command in depends_on_commands:
-                if command != 'test-module':
-                    if command.endswith('dev') or command.endswith('copy'):
-                        error_message, error_code = Errors.invalid_command_name_in_script(script_data.get('name'),
-                                                                                          command)
-                        if self.handle_error(error_message, error_code, file_path="id_set.json"):
-                            return not is_valid
+                if command != 'test-module' and (
+                    command.endswith('dev') or command.endswith('copy')
+                ):
+                    error_message, error_code = Errors.invalid_command_name_in_script(script_data.get('name'),
+                                                                                      command)
+                    if self.handle_error(error_message, error_code, file_path="id_set.json"):
+                        return not is_valid
         return is_valid
 
     @error_codes('IN132,IN133')
@@ -326,8 +321,7 @@ class IDSetValidations(BaseValidator):
             bool. Whether the integration fetch incident classifier is found.
         """
         is_valid_classifier = True
-        integration_classifier = integration_data.get('classifiers', '')  # there is only 1 classifier per integration
-        if integration_classifier:
+        if integration_classifier := integration_data.get('classifiers', ''):
             # setting initially to false, if the classifier is in the id_set, it will be valid
             is_valid_classifier = False
             for classifier in self.classifiers_set:
@@ -341,8 +335,7 @@ class IDSetValidations(BaseValidator):
                     is_valid_classifier = True
 
         is_valid_mapper = True
-        integration_mapper = integration_data.get('mappers', [''])[0]  # there is only 1 mapper per integration
-        if integration_mapper:
+        if integration_mapper := integration_data.get('mappers', [''])[0]:
             # setting initially to false, if the mapper is in the id_set, it will be valid
             is_valid_mapper = False
             for mapper in self.mappers_set:
@@ -368,8 +361,9 @@ class IDSetValidations(BaseValidator):
             bool. Whether the classifier related incident types are found.
         """
         is_valid = True
-        classifier_incident_types = set(classifier_data.get('incident_types', set()))
-        if classifier_incident_types:
+        if classifier_incident_types := set(
+            classifier_data.get('incident_types', set())
+        ):
             # setting initially to false, if the incident types is in the id_set, it will be valid
             is_valid = False
             for incident_type in self.incident_types_set:
@@ -401,8 +395,7 @@ class IDSetValidations(BaseValidator):
             bool. Whether the classifier related incident types are found.
         """
         is_valid = True
-        mapper_incident_types = set(mapper_data.get('incident_types', set()))
-        if mapper_incident_types:
+        if mapper_incident_types := set(mapper_data.get('incident_types', set())):
             # setting initially to false, if the incident types is in the id_set, it will be valid
             is_valid = False
             for incident_type in self.incident_types_set:
@@ -453,10 +446,7 @@ class IDSetValidations(BaseValidator):
 
         result, error = self.is_playbook_integration_version_valid(playbook_integration_commands, playbook_version,
                                                                    playbook_name, file_path)
-        if not result:
-            return False, error
-
-        return True, None
+        return (True, None) if result else (False, error)
 
     @error_codes('PB113')
     def is_subplaybook_name_valid(self, playbook_data, file_path):
@@ -544,7 +534,7 @@ class IDSetValidations(BaseValidator):
                 main_playbook_data=main_playbook_data
             )
             return all(task_data.get('skipunavailable', False) for task_data in tasks_data) \
-                if tasks_data and Version(main_playbook_version) >= Version('6.0.0') else False
+                    if tasks_data and Version(main_playbook_version) >= Version('6.0.0') else False
 
         def is_minimum_version_valid(_min_version) -> bool:
             """
@@ -648,13 +638,12 @@ class IDSetValidations(BaseValidator):
         return True, None
 
     def get_integration_version(self, integration_to_search):
-        general_version = ""  # i.e integration has no specific version
         for integration_dict in self.integration_set:
             integration_name = list(integration_dict.keys())[0]
             if integration_name == integration_to_search:
                 integration_data = integration_dict[integration_name]
                 return integration_data.get("fromversion", "")
-        return general_version
+        return ""
 
     def is_file_valid_in_set(self, file_path, file_type, ignored_errors=None):
         """Check if the file is valid in the id_set
@@ -718,10 +707,15 @@ class IDSetValidations(BaseValidator):
 
         new_pack_folder_name = list(pack_metadata_data.keys())[0]
         new_pack_name = pack_metadata_data[new_pack_folder_name]['name']
-        for pack_folder_name, pack_data in self.packs_set.items():
-            if new_pack_name == pack_data['name'] and new_pack_folder_name != pack_folder_name:
-                return False, Errors.pack_name_already_exists(new_pack_name)
-        return True, None
+        return next(
+            (
+                (False, Errors.pack_name_already_exists(new_pack_name))
+                for pack_folder_name, pack_data in self.packs_set.items()
+                if new_pack_name == pack_data['name']
+                and new_pack_folder_name != pack_folder_name
+            ),
+            (True, None),
+        )
 
     def is_unique_file_valid_in_set(self, pack_path, ignored_errors=None):
         """Check if unique files are valid against the rest of the files, using the ID set.

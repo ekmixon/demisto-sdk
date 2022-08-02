@@ -60,11 +60,14 @@ class LayoutBaseValidator(ContentEntityValidator, ABC):
         Returns:
             bool. True if to version field is higher than from version field, else False.
         """
-        if self.to_version and self.from_version:
-            if LooseVersion(self.to_version) <= LooseVersion(self.from_version):
-                error_message, error_code = Errors.from_version_higher_to_version()
-                if self.handle_error(error_message, error_code, file_path=self.file_path):
-                    return False
+        if (
+            self.to_version
+            and self.from_version
+            and LooseVersion(self.to_version) <= LooseVersion(self.from_version)
+        ):
+            error_message, error_code = Errors.from_version_higher_to_version()
+            if self.handle_error(error_message, error_code, file_path=self.file_path):
+                return False
         return True
 
     @staticmethod
@@ -226,11 +229,12 @@ class LayoutValidator(LayoutBaseValidator):
         Returns:
             bool. True if from version field is valid, else False.
         """
-        if self.from_version:
-            if LooseVersion(self.from_version) >= LooseVersion(FROM_VERSION_LAYOUTS_CONTAINER):
-                error_message, error_code = Errors.invalid_version_in_layout('fromVersion')
-                if self.handle_error(error_message, error_code, file_path=self.file_path):
-                    return False
+        if self.from_version and LooseVersion(self.from_version) >= LooseVersion(
+            FROM_VERSION_LAYOUTS_CONTAINER
+        ):
+            error_message, error_code = Errors.invalid_version_in_layout('fromVersion')
+            if self.handle_error(error_message, error_code, file_path=self.file_path):
+                return False
         return True
 
     @error_codes('LO100')

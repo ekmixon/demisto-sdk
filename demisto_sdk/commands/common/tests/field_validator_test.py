@@ -430,7 +430,7 @@ class TestFieldValidator:
             - Ensure validate fails when the field name does not start with the pack name prefix.
         """
         from demisto_sdk.commands.common.hook_validations import \
-            field_base_validator
+                field_base_validator
         with patch.object(StructureValidator, '__init__', lambda a, b: None):
             structure = StructureValidator("")
             structure.current_file = current_file

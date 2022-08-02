@@ -78,8 +78,7 @@ class IncidentTypeValidator(ContentEntityValidator):
        """
         is_bc_broke = False
 
-        old_from_version = self.old_file.get('fromVersion', None)
-        if old_from_version:
+        if old_from_version := self.old_file.get('fromVersion', None):
             current_from_version = self.current_file.get('fromVersion', None)
             if old_from_version != current_from_version:
                 error_message, error_code = Errors.from_version_modified_after_rename()
@@ -159,16 +158,12 @@ class IncidentTypeValidator(ContentEntityValidator):
                         extracted_indicator_types) != list:
                     invalid_incident_fields.append(incident_field)
 
-                # If trying to extract without regex make sure extract all is set to
-                # False and the extracted indicators list is empty
                 elif extract_as_is != "":
                     if extracting_all is True or len(extracted_indicator_types) > 0:
                         invalid_incident_fields.append(incident_field)
 
-                # If trying to extract with regex make sure extract all is set to
-                # False and the extract_as_is should be set to an empty string
                 elif len(extracted_indicator_types) > 0:
-                    if extracting_all is True or extract_as_is != "":
+                    if extracting_all is True:
                         invalid_incident_fields.append(incident_field)
 
             if invalid_incident_fields:

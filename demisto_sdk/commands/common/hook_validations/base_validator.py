@@ -120,9 +120,12 @@ class BaseValidator:
         )
 
     def should_run_validation(self, error_code: str):
-        if not self.specific_validations:
-            return True
-        return error_code in self.specific_validations or error_code[:2] in self.specific_validations
+        return (
+            error_code in self.specific_validations
+            or error_code[:2] in self.specific_validations
+            if self.specific_validations
+            else True
+        )
 
     def handle_error(self, error_message, error_code, file_path, should_print=True, suggested_fix=None, warning=False,
                      drop_line=False):
@@ -141,11 +144,12 @@ class BaseValidator:
         Returns:
             str: formatted error message, None in case validation should be skipped or can be ignored.
         """
-        if self.specific_validations:
-            if not self.should_run_validation(error_code):
-                # if the error code is not specified in the
-                # specific_validations list, we exit the function and return None
-                return None
+        if self.specific_validations and not self.should_run_validation(
+            error_code
+        ):
+            # if the error code is not specified in the
+            # specific_validations list, we exit the function and return None
+            return None
 
         def formatted_error_str(error_type):
             if error_type not in {'ERROR', 'WARNING'}:
@@ -236,8 +240,7 @@ class BaseValidator:
         return json.loads(metadata_file_content)
 
     def update_checked_flags_by_support_level(self, file_path):
-        pack_name = get_pack_name(file_path)
-        if pack_name:
+        if pack_name := get_pack_name(file_path):
             metadata_path = os.path.join(PACKS_DIR, pack_name, PACKS_PACK_META_FILE_NAME)
             metadata_json = self.get_metadata_file_content(metadata_path)
             support = metadata_json.get(PACK_METADATA_SUPPORT)

@@ -16,16 +16,16 @@ def get_similar_texts(text, other_texts):
     if type(text) is not list:
         text = [text]
     tfidf = vect.fit_transform(text + other_texts)
-    similarity_vector = linear_kernel(tfidf[0:1], tfidf).flatten()
+    similarity_vector = linear_kernel(tfidf[:1], tfidf).flatten()
     return similarity_vector[1:]
 
 
 def get_texts_from_incident(incident, text_fields):
-    texts = []
-    # labels
-    for label in incident.get('labels') or []:
-        if label['type'].lower() in text_fields:
-            texts.append(label['value'])
+    texts = [
+        label['value']
+        for label in incident.get('labels') or []
+        if label['type'].lower() in text_fields
+    ]
 
     # custom fields + incident fields
     custom_fields = incident.get('CustomFields') or {}
@@ -52,14 +52,25 @@ def get_incidents_by_time(incident_time, incident_type, incident_id, hours_time_
         query += " and -closed:*"
 
     if incident_id:
-        query += ' and -id:%s' % incident_id
+        query += f' and -id:{incident_id}'
 
-    args = {'query': query, 'size': max_number_of_results, 'sort': '%s.desc' % time_field}
+    args = {
+        'query': query,
+        'size': max_number_of_results,
+        'sort': f'{time_field}.desc',
+    }
+
     if time_field == "created":
         args['from'] = min_date.isoformat()
-    res = demisto.executeCommand("getIncidents",
-                                 {'query': query,
-                                  'size': max_number_of_results, 'sort': '%s.desc' % time_field})
+    res = demisto.executeCommand(
+        "getIncidents",
+        {
+            'query': query,
+            'size': max_number_of_results,
+            'sort': f'{time_field}.desc',
+        },
+    )
+
 
     if res[0]['Type'] == entryTypes['error']:
         raise Exception(str(res[0]['Contents']))
@@ -99,8 +110,7 @@ def pre_process_nlp(text_data):
     processed_text_data = res[0]['Contents']
     if not isinstance(processed_text_data, list):
         processed_text_data = [processed_text_data]
-    tokenized_text_data = map(lambda x: x.get('tokenizedText'), processed_text_data)
-    return tokenized_text_data
+    return map(lambda x: x.get('tokenizedText'), processed_text_data)
 
 
 def main():
@@ -169,6 +179,5 @@ def main():
 
 
 if __name__ in ['__main__', '__builtin__', 'builtins']:
-    entry = main()
-    if entry:
+    if entry := main():
         demisto.results(entry)

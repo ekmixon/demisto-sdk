@@ -30,17 +30,14 @@ class IndicatorField(JSONContentObject):
         normalize_file_name = self._path.name
         # Handle case where "incidentfield-*hello-world.yml"
         if normalize_file_name.startswith(f'{INCIDENT_FIELD}-') and \
-                not normalize_file_name.startswith(f'{INCIDENT_FIELD}-{INDICATOR_FIELD}-'):
+                    not normalize_file_name.startswith(f'{INCIDENT_FIELD}-{INDICATOR_FIELD}-'):
             normalize_file_name = normalize_file_name.replace(f'{INCIDENT_FIELD}-',
                                                               f'{INCIDENT_FIELD}-{INDICATOR_FIELD}-')
+        elif normalize_file_name.startswith(f'{INDICATOR_FIELD}-'):
+            normalize_file_name = normalize_file_name.replace(f'{INDICATOR_FIELD}-',
+                                                              f'{INCIDENT_FIELD}-{INDICATOR_FIELD}-')
         else:
-            # Handle case where "indicatorfield-*hello-world.yml"
-            if normalize_file_name.startswith(f'{INDICATOR_FIELD}-'):
-                normalize_file_name = normalize_file_name.replace(f'{INDICATOR_FIELD}-',
-                                                                  f'{INCIDENT_FIELD}-{INDICATOR_FIELD}-')
-            # Handle case where "*hello-world.yml"
-            else:
-                normalize_file_name = f'{INCIDENT_FIELD}-{INDICATOR_FIELD}-{normalize_file_name}'
+            normalize_file_name = f'{INCIDENT_FIELD}-{INDICATOR_FIELD}-{normalize_file_name}'
 
         return normalize_file_name
 

@@ -272,12 +272,8 @@ class Pack:
 
     @property
     def pack_metadata(self) -> Optional[PackMetaData]:
-        obj = None
         file = self._path / "pack_metadata.json"
-        if file.exists():
-            obj = PackMetaData(file)
-
-        return obj
+        return PackMetaData(file) if file.exists() else None
 
     @property
     def metadata(self) -> PackMetaData:
@@ -289,48 +285,28 @@ class Pack:
 
     @property
     def secrets_ignore(self) -> Optional[SecretIgnore]:
-        obj = None
         file = self._path / ".secrets-ignore"
-        if file.exists():
-            obj = SecretIgnore(file)
-
-        return obj
+        return SecretIgnore(file) if file.exists() else None
 
     @property
     def pack_ignore(self) -> Optional[PackIgnore]:
-        obj = None
         file = self._path / ".pack-ignore"
-        if file.exists():
-            obj = PackIgnore(file)
-
-        return obj
+        return PackIgnore(file) if file.exists() else None
 
     @property
     def readme(self) -> Optional[Readme]:
-        obj = None
         file = self._path / "README.md"
-        if file.exists():
-            obj = Readme(path=file)
-
-        return obj
+        return Readme(path=file) if file.exists() else None
 
     @property
     def author_image(self) -> Optional[AuthorImage]:
-        obj = None
         file = self._path / "Author_image.png"
-        if file.exists():
-            obj = AuthorImage(file)
-
-        return obj
+        return AuthorImage(file) if file.exists() else None
 
     @property
     def contributors(self) -> Optional[Contributors]:
-        obj = None
         file = self._path / "CONTRIBUTORS.json"
-        if file.exists():
-            obj = Contributors(path=file)
-
-        return obj
+        return Contributors(path=file) if file.exists() else None
 
     @property
     def filter_items_by_id_set(self) -> bool:
@@ -424,9 +400,7 @@ class Pack:
         """
         Get content of the pack metadata.
         """
-        if pack_metadata := self.pack_metadata:
-            return pack_metadata.to_dict()
-        return {}
+        return pack_metadata.to_dict() if (pack_metadata := self.pack_metadata) else {}
 
     def is_server_version_ge(self, client, server_version_to_check):
         server_version = get_demisto_version(client)
@@ -484,5 +458,5 @@ class Pack:
                                                   error_msg='Can not turn on the pack verification')
             except (Exception, KeyboardInterrupt):
                 action = DELETE_VERIFY_KEY_ACTION if prev_key_val is None \
-                    else SET_VERIFY_KEY_ACTION.format(prev_key_val)
+                        else SET_VERIFY_KEY_ACTION.format(prev_key_val)
                 raise Exception(TURN_VERIFICATION_ERROR_MSG.format(action=action))

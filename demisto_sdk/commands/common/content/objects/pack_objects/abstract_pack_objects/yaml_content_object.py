@@ -41,9 +41,13 @@ class YAMLContentObject(YAMLObject):
             1. Should be deprecated in the future.
         """
         if not self._change_log:
-            change_log_file = next(self.path.parent.glob(patterns=fr'@(CHANGELOG.md|{re.escape(self.path.stem)}_CHANGELOG.md)',
-                                                         flags=EXTGLOB), None)
-            if change_log_file:
+            if change_log_file := next(
+                self.path.parent.glob(
+                    patterns=fr'@(CHANGELOG.md|{re.escape(self.path.stem)}_CHANGELOG.md)',
+                    flags=EXTGLOB,
+                ),
+                None,
+            ):
                 self._change_log = ChangeLog(change_log_file)
 
         return self._change_log
@@ -56,9 +60,13 @@ class YAMLContentObject(YAMLObject):
             Readme object or None if Readme not found.
         """
         if not self._readme:
-            readme_file = next(self.path.parent.glob(patterns=fr'@(README.md|{re.escape(self.path.stem)}_README.md)',
-                                                     flags=EXTGLOB), None)
-            if readme_file:
+            if readme_file := next(
+                self.path.parent.glob(
+                    patterns=fr'@(README.md|{re.escape(self.path.stem)}_README.md)',
+                    flags=EXTGLOB,
+                ),
+                None,
+            ):
                 self._readme = Readme(readme_file)
 
         return self._readme

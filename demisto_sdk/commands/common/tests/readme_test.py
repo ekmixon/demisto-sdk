@@ -36,7 +36,7 @@ def test_is_file_valid(mocker, current, answer):
     readme_validator = ReadMeValidator(current)
     valid = readme_validator.are_modules_installed_for_verify(readme_validator.content_path)
     if not valid:
-        pytest.skip('skipping mdx test. ' + MDX_SKIP_NPM_MESSAGE)
+        pytest.skip(f'skipping mdx test. {MDX_SKIP_NPM_MESSAGE}')
         return
     with requests_mock.Mocker() as m:
         # Mock get requests
@@ -58,7 +58,7 @@ def test_is_file_valid_mdx_server(mocker, current, answer):
         readme_validator = ReadMeValidator(current)
         valid = readme_validator.are_modules_installed_for_verify(readme_validator.content_path)
         if not valid:
-            pytest.skip('skipping mdx server test. ' + MDX_SKIP_NPM_MESSAGE)
+            pytest.skip(f'skipping mdx server test. {MDX_SKIP_NPM_MESSAGE}')
             return
         mocker.patch.dict(os.environ, {'DEMISTO_README_VALIDATION': 'yes'})
         assert readme_validator.is_valid_file() is answer

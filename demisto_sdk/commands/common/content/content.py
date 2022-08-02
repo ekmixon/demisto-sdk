@@ -46,13 +46,11 @@ class Content:
         TODO:
             1. Add attribute which init only changed objects by git.
         """
-        repo = cls.git()
-        if repo:
-            content = Content(repo.working_tree_dir)
-        else:
-            content = Content(Path.cwd())
-
-        return content
+        return (
+            Content(repo.working_tree_dir)
+            if (repo := cls.git())
+            else Content(Path.cwd())
+        )
 
     @staticmethod
     def git() -> Repo | None:
@@ -123,9 +121,5 @@ class Content:
     @property
     def content_descriptor(self) -> ContentDescriptor | None:
         """<content>/content-descriptor.json file"""
-        descriptor_object = None
         path = self._path / 'content-descriptor.json'
-        if path.exists():
-            descriptor_object = ContentDescriptor(path)
-
-        return descriptor_object
+        return ContentDescriptor(path) if path.exists() else None

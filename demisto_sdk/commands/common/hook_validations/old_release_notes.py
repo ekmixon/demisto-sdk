@@ -73,25 +73,26 @@ class OldReleaseNotesValidator(BaseValidator):
                 return True
 
         error_message, error_code = Errors.no_new_release_notes(self.release_notes_path)
-        if self.handle_error(error_message, error_code, file_path=self.file_path):
-            return False
-
-        return True
+        return not self.handle_error(
+            error_message, error_code, file_path=self.file_path
+        )
 
     def is_valid_one_line_comment(self, release_notes_comments):
-        if re.match(self.SINGLE_LINE_REAL_COMMENT_REGEX, release_notes_comments[0]) or \
-                re.match(self.COMMENT_FILLER_REGEX, release_notes_comments[0]):
-            return True
-
-        return False
+        return bool(
+            re.match(
+                self.SINGLE_LINE_REAL_COMMENT_REGEX, release_notes_comments[0]
+            )
+            or re.match(self.COMMENT_FILLER_REGEX, release_notes_comments[0])
+        )
 
     def is_valid_multi_line_comment(self, release_notes_comments):
-        for comment in release_notes_comments:
-            if not (re.match(self.MULTI_LINE_REAL_COMMENT_REGEX, comment) or
-                    re.match(self.COMMENT_FILLER_REGEX, comment)):
-                return False
-
-        return True
+        return all(
+            (
+                re.match(self.MULTI_LINE_REAL_COMMENT_REGEX, comment)
+                or re.match(self.COMMENT_FILLER_REGEX, comment)
+            )
+            for comment in release_notes_comments
+        )
 
     @error_codes('RN101,RN102')
     def is_valid_release_notes_structure(self):
@@ -105,10 +106,9 @@ class OldReleaseNotesValidator(BaseValidator):
 
         else:
             error_message, error_code = Errors.no_new_release_notes(self.release_notes_path)
-            if self.handle_error(error_message, error_code, file_path=self.release_notes_path):
-                return False
-
-            return True
+            return not self.handle_error(
+                error_message, error_code, file_path=self.release_notes_path
+            )
 
         if not release_notes_comments[-1]:
             release_notes_comments = release_notes_comments[:-1]

@@ -9,7 +9,9 @@ def get_outputs(yml: dict, ignore_prefix: Optional[str]):
     for command in yml.get('script', {}).get('commands', []):
         for output in command.get('outputs', []):
             path = output['contextPath']
-            if ignore_prefix is None or not path.startswith(ignore_prefix + "."):
+            if ignore_prefix is None or not path.startswith(
+                f"{ignore_prefix}."
+            ):
                 result[path] = output['description']
     return result
 

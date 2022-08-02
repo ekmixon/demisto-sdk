@@ -116,7 +116,6 @@ class ImageValidator(BaseValidator):
     @error_codes('IM102,IM100')
     def is_existing_image(self):
         """Check if the integration has an image."""
-        is_image_in_yml = False
         is_image_in_package = False
 
         data_dictionary = get_yaml(self.file_path)
@@ -124,11 +123,10 @@ class ImageValidator(BaseValidator):
         if not data_dictionary:
             return False
 
-        if data_dictionary.get('image'):
-            is_image_in_yml = True
+        is_image_in_yml = bool(data_dictionary.get('image'))
         if not re.match(PACKS_INTEGRATION_NON_SPLIT_YML_REGEX, self.file_path, re.IGNORECASE):
             package_path = os.path.dirname(self.file_path)
-            image_path = glob.glob(package_path + '/*.png')
+            image_path = glob.glob(f'{package_path}/*.png')
             if image_path:
                 is_image_in_package = True
         if is_image_in_package and is_image_in_yml:
@@ -137,7 +135,7 @@ class ImageValidator(BaseValidator):
                 self._is_valid = False
                 return False
 
-        if not (is_image_in_package or is_image_in_yml):
+        if not is_image_in_package and not is_image_in_yml:
             error_message, error_code = Errors.no_image_given()
             if self.handle_error(error_message, error_code, file_path=self.file_path):
                 self._is_valid = False
@@ -165,10 +163,9 @@ class ImageValidator(BaseValidator):
         if image_data and len(image_data) == 2:
             return image_data[1]
 
-        else:
-            error_message, error_code = Errors.image_field_not_in_base64()
-            if self.handle_error(error_message, error_code, file_path=self.file_path):
-                self._is_valid = False
+        error_message, error_code = Errors.image_field_not_in_base64()
+        if self.handle_error(error_message, error_code, file_path=self.file_path):
+            self._is_valid = False
 
     def load_image(self):
         if re.match(IMAGE_REGEX, self.file_path, re.IGNORECASE):

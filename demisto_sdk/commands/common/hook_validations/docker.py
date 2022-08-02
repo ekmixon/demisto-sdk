@@ -81,7 +81,10 @@ class DockerImageValidator(BaseValidator):
 
     @error_codes('DO100,DO106,DO101')
     def is_docker_image_latest_tag(self):
-        if 'demisto/python:1.3-alpine' == f'{self.docker_image_name}:{self.docker_image_tag}':
+        if (
+            f'{self.docker_image_name}:{self.docker_image_tag}'
+            == 'demisto/python:1.3-alpine'
+        ):
             # the docker image is the default one
             error_message, error_code = Errors.default_docker_error()
             if self.handle_error(error_message, error_code, file_path=self.file_path):
@@ -122,25 +125,25 @@ class DockerImageValidator(BaseValidator):
         return self.is_latest_tag
 
     def get_code_type(self):
-        if self.is_integration:
-            code_type = self.yml_file.get('script', {}).get('type', 'python')
-        else:
-            code_type = self.yml_file.get('type', 'python')
-        return code_type
+        return (
+            self.yml_file.get('script', {}).get('type', 'python')
+            if self.is_integration
+            else self.yml_file.get('type', 'python')
+        )
 
     def get_python_version(self):
-        if self.is_integration:
-            python_version = self.yml_file.get('script', {}).get('subtype', 'python2')
-        else:
-            python_version = self.yml_file.get('subtype', 'python2')
-        return python_version
+        return (
+            self.yml_file.get('script', {}).get('subtype', 'python2')
+            if self.is_integration
+            else self.yml_file.get('subtype', 'python2')
+        )
 
     def get_docker_image_from_yml(self):
-        if self.is_integration:
-            docker_image = self.yml_file.get('script', {}).get('dockerimage', '')
-        else:
-            docker_image = self.yml_file.get('dockerimage', '')
-        return docker_image
+        return (
+            self.yml_file.get('script', {}).get('dockerimage', '')
+            if self.is_integration
+            else self.yml_file.get('dockerimage', '')
+        )
 
     @staticmethod
     def parse_www_auth(www_auth):
@@ -151,9 +154,7 @@ class DockerImageValidator(BaseValidator):
         :type www_auth: string
         """
         match = re.match(r'.*realm="(.+)",service="(.+)".*', www_auth, re.IGNORECASE)
-        if not match:
-            return ()
-        return match.groups()
+        return match.groups() if match else ()
 
     @staticmethod
     def docker_auth(image_name, verify_ssl=True, registry=DEFAULT_REGISTRY):
@@ -161,25 +162,20 @@ class DockerImageValidator(BaseValidator):
         Authenticate to the docker service. Return an authentication token if authentication is required.
         """
         res = requests.get(
-            'https://{}/v2/'.format(registry),
+            f'https://{registry}/v2/',
             headers=ACCEPT_HEADER,
             timeout=TIMEOUT,
-            verify=verify_ssl
+            verify=verify_ssl,
         )
+
         if res.status_code == 401:  # need to authenticate
             # defaults in case we fail for some reason
             realm = 'https://auth.docker.io/token'
             service = 'registry.docker.io'
-            # Should contain header: Www-Authenticate
-            www_auth = res.headers.get('www-authenticate')
-            if www_auth:
-                parse_auth = DockerImageValidator.parse_www_auth(www_auth)
-                if parse_auth:
+            if www_auth := res.headers.get('www-authenticate'):
+                if parse_auth := DockerImageValidator.parse_www_auth(www_auth):
                     realm, service = parse_auth
-            params = {
-                'scope': 'repository:{}:pull'.format(image_name),
-                'service': service
-            }
+            params = {'scope': f'repository:{image_name}:pull', 'service': service}
             res = requests.get(
                 url=realm,
                 params=params,
@@ -262,32 +258,30 @@ class DockerImageValidator(BaseValidator):
         auth_token = DockerImageValidator.docker_auth(docker_image_name, False, DEFAULT_REGISTRY)
         headers = ACCEPT_HEADER.copy()
         if auth_token:
-            headers['Authorization'] = 'Bearer {}'.format(auth_token)
+            headers['Authorization'] = f'Bearer {auth_token}'
         # first try to get the docker image tags using normal http request
         res = requests.get(
-            url='https://hub.docker.com/v2/repositories/{}/tags'.format(docker_image_name),
+            url=f'https://hub.docker.com/v2/repositories/{docker_image_name}/tags',
             verify=False,
             timeout=TIMEOUT,
         )
+
         if res.status_code == 200:
-            tags = res.json().get('results', [])
-            # if http request successful find the latest tag by date in the response
-            if tags:
+            if tags := res.json().get('results', []):
                 tag = DockerImageValidator.find_latest_tag_by_date(tags)
 
         else:
             # if http request did not succeed than get tags using the API.
             # See: https://docs.docker.com/registry/spec/api/#listing-image-tags
             res = requests.get(
-                'https://{}/v2/{}/tags/list'.format(DEFAULT_REGISTRY, docker_image_name),
+                f'https://{DEFAULT_REGISTRY}/v2/{docker_image_name}/tags/list',
                 headers=headers,
                 timeout=TIMEOUT,
-                verify=False
+                verify=False,
             )
+
             res.raise_for_status()
-            # the API returns tags in lexical order with no date info - so try an get the numeric highest tag
-            tags = res.json().get('tags', [])
-            if tags:
+            if tags := res.json().get('tags', []):
                 tag = DockerImageValidator.lexical_find_latest_tag(tags)
         return tag
 
@@ -301,12 +295,11 @@ class DockerImageValidator(BaseValidator):
         Returns:
             The last updated docker image tag
         """
-        if yml_docker_image:
-            if not yml_docker_image.startswith('demisto/'):
-                error_message, error_code = Errors.not_demisto_docker()
-                if self.handle_error(error_message, error_code, file_path=self.file_path):
-                    return ''
-                return "no-tag-required"
+        if yml_docker_image and not yml_docker_image.startswith('demisto/'):
+            error_message, error_code = Errors.not_demisto_docker()
+            if self.handle_error(error_message, error_code, file_path=self.file_path):
+                return ''
+            return "no-tag-required"
         try:
             if is_iron_bank:
                 return self.get_docker_image_latest_tag_from_iron_bank_request(docker_image_name)
@@ -329,32 +322,39 @@ class DockerImageValidator(BaseValidator):
         Returns:
             The name and the tag of the docker image
         """
-        if docker_image:
-            tag = ''
-            image = ''
-            try:
-                image_regex = re.findall(r'(demisto\/.+)', docker_image, re.IGNORECASE)
-                if image_regex:
-                    image = image_regex[0]
-                if ':' in image:
-                    image_split = image.split(':')
-                    image = image_split[0]
-                    tag = image_split[1]
-                else:
-                    error_message, error_code = Errors.no_docker_tag(docker_image)
-                    self.handle_error(error_message, error_code, file_path=self.file_path)
+        if not docker_image:
+            return (
+                (
+                    'demisto/python',
+                    self.get_docker_image_latest_tag('demisto/python', None),
+                )
+                if self.py_version == 'python2'
+                else (
+                    'demisto/python3',
+                    self.get_docker_image_latest_tag('demisto/python3', None),
+                )
+            )
 
-            except IndexError:
-                error_message, error_code = Errors.docker_not_formatted_correctly(docker_image)
+        tag = ''
+        image = ''
+        try:
+            if image_regex := re.findall(
+                r'(demisto\/.+)', docker_image, re.IGNORECASE
+            ):
+                image = image_regex[0]
+            if ':' in image:
+                image_split = image.split(':')
+                image = image_split[0]
+                tag = image_split[1]
+            else:
+                error_message, error_code = Errors.no_docker_tag(docker_image)
                 self.handle_error(error_message, error_code, file_path=self.file_path)
 
-            return image, tag
-        else:
-            if self.py_version == 'python2':
-                # If the yml file has no docker image we provide a default one with numeric tag
-                return 'demisto/python', self.get_docker_image_latest_tag('demisto/python', None)
-            else:
-                return 'demisto/python3', self.get_docker_image_latest_tag('demisto/python3', None)
+        except IndexError:
+            error_message, error_code = Errors.docker_not_formatted_correctly(docker_image)
+            self.handle_error(error_message, error_code, file_path=self.file_path)
+
+        return image, tag
 
     @staticmethod
     def get_docker_image_latest_tag_from_iron_bank_request(docker_image_name):
@@ -381,13 +381,10 @@ class DockerImageValidator(BaseValidator):
             raise (e)
 
         version_pattern = 'tags:\n- (.*)\n'
-        latest_version = re.findall(version_pattern, manifest_file_content)
-
-        # If manifest file does not contain the tag:
-        if not latest_version:
+        if latest_version := re.findall(version_pattern, manifest_file_content):
+            return latest_version[0].strip('"')
+        else:
             raise Exception('(Iron Bank) Manifest file does not contain tag in expected format.')
-
-        return latest_version[0].strip('"')
 
     @staticmethod
     def _get_manifest_from_commit(manifest_url, commit_id):
@@ -412,14 +409,11 @@ class DockerImageValidator(BaseValidator):
             raise Exception('The docker image in your integration/script cannot be found in Iron Bank. '
                             f'Please create the image: {docker_image_name} in Iron Bank.')
 
-        last_successful_pipelines = res.json()
-
-        # Project seems to have no succeed pipeline for master branch, meaning the image is not in Iron Bank.
-        if not last_successful_pipelines:
+        if last_successful_pipelines := res.json():
+            return last_successful_pipelines[0]['sha']
+        else:
             raise Exception('The docker image in your integration/script does not have a tag in Iron Bank. '
                             'Please use only images that are already in Iron Bank, or upload your image to it.')
-
-        return last_successful_pipelines[0]['sha']
 
     @staticmethod
     def get_deprecated_dockers_list() -> dict:
@@ -430,13 +424,12 @@ class DockerImageValidator(BaseValidator):
         try:
             dockers_request = requests.get(DEPRECATED_DOCKER_IMAGE_LIST_URL, verify=False)
             dockers_request.raise_for_status()
-            deprecated_dockers_json = dockers_request.json()
-            return deprecated_dockers_json
+            return dockers_request.json()
         except Exception as exc:
             exc_msg = str(exc)
             if isinstance(exc, requests.exceptions.ConnectionError):
                 exc_msg = f'{exc_msg[exc_msg.find(">") + 3:-3]}.\n' \
-                          f'This may happen if you are not connected to the internet.'
+                              f'This may happen if you are not connected to the internet.'
             raise Exception(f'Could not get latest demisto-sdk version.\nEncountered error: {exc_msg}')
 
     def is_docker_image_deprecated(self, docker_image_name) -> Union[Tuple[str, str], str]:

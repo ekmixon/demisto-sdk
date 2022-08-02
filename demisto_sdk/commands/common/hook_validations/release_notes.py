@@ -44,8 +44,9 @@ class ReleaseNotesValidator(BaseValidator):
     @error_codes('RN107')
     def are_release_notes_complete(self):
         is_valid = True
-        modified_added_files = itertools.chain.from_iterable((self.added_files or [], self.modified_files or []))
-        if modified_added_files:
+        if modified_added_files := itertools.chain.from_iterable(
+            (self.added_files or [], self.modified_files or [])
+        ):
             for file in modified_added_files:
                 # renamed files will appear in the modified list as a tuple: (old path, new path)
                 if isinstance(file, tuple):
@@ -60,13 +61,22 @@ class ReleaseNotesValidator(BaseValidator):
                     update_rn_util = UpdateRN(pack_path=self.pack_path, modified_files_in_pack=set(),
                                               update_type=None, added_files=set(), pack=self.pack_name)
                     file_name, file_type = update_rn_util.get_changed_file_name_and_type(file)
-                    if file_name and file_type and file_type in RN_HEADER_BY_FILE_TYPE:
-                        if (RN_HEADER_BY_FILE_TYPE[file_type] not in self.latest_release_notes) or \
-                                (file_name not in self.latest_release_notes):
-                            error_message, error_code = Errors.missing_release_notes_entry(file_type, self.pack_name,
-                                                                                           file_name)
-                            if self.handle_error(error_message, error_code, self.release_notes_file_path):
-                                is_valid = False
+                    if (
+                        file_name
+                        and file_type
+                        and file_type in RN_HEADER_BY_FILE_TYPE
+                        and (
+                            (
+                                RN_HEADER_BY_FILE_TYPE[file_type]
+                                not in self.latest_release_notes
+                            )
+                            or (file_name not in self.latest_release_notes)
+                        )
+                    ):
+                        error_message, error_code = Errors.missing_release_notes_entry(file_type, self.pack_name,
+                                                                                       file_name)
+                        if self.handle_error(error_message, error_code, self.release_notes_file_path):
+                            is_valid = False
         return is_valid
 
     @error_codes('RN104,RN103')
@@ -109,12 +119,12 @@ class ReleaseNotesValidator(BaseValidator):
                         entity_conent = splited_release_notes_entities.get(modified_yml_dict.get(field, {}), '') + "\n"
                         docker_version = self.get_docker_version_from_rn(entity_conent)
                         yml_docker_version = modified_yml_dict.get("dockerimage") if type == 'Scripts' else \
-                            modified_yml_dict.get("script", {}).get("dockerimage", '')
+                                modified_yml_dict.get("script", {}).get("dockerimage", '')
                         if docker_version and yml_docker_version and yml_docker_version != docker_version:
                             error_list.append({'name': modified_yml_dict.get(field),
                                                'rn_version': docker_version,
                                                'yml_version': yml_docker_version})
-        if len(error_list) > 0:
+        if error_list:
             error_message, error_code = Errors.release_notes_docker_image_not_match_yaml(rn_file_name,
                                                                                          error_list, self.pack_path)
             if self.handle_error(error_message, error_code, file_path=self.release_notes_file_path):
@@ -129,13 +139,17 @@ class ReleaseNotesValidator(BaseValidator):
         """
         is_valid = True
         if 'breaking change' in self.latest_release_notes.lower():
-            json_path = self.release_notes_file_path[:-2] + 'json'
+            json_path = f'{self.release_notes_file_path[:-2]}json'
             error_message, error_code = Errors.release_notes_bc_json_file_missing(json_path)
             try:
                 json_file_content = get_dict_from_file(path=json_path)[0]  # extract only the dictionary
-                if 'breakingChanges' not in json_file_content or not json_file_content.get('breakingChanges'):
-                    if self.handle_error(error_message, error_code, self.release_notes_file_path):
-                        is_valid = False
+                if (
+                    'breakingChanges' not in json_file_content
+                    or not json_file_content.get('breakingChanges')
+                ) and self.handle_error(
+                    error_message, error_code, self.release_notes_file_path
+                ):
+                    is_valid = False
             except FileNotFoundError:
                 if self.handle_error(error_message, error_code, self.release_notes_file_path):
                     is_valid = False
@@ -151,10 +165,14 @@ class ReleaseNotesValidator(BaseValidator):
             (str): The docker image version if exists, otherwise, return None.
         """
         updates_list = section.split("\n")
-        for update in updates_list:
-            if "Docker image" in update and "demisto/" in update:
-                return extract_docker_image_from_text(update)
-        return ''
+        return next(
+            (
+                extract_docker_image_from_text(update)
+                for update in updates_list
+                if "Docker image" in update and "demisto/" in update
+            ),
+            '',
+        )
 
     @staticmethod
     def get_information_from_rn(rn: str, splitter: str) -> dict:
@@ -167,11 +185,11 @@ class ReleaseNotesValidator(BaseValidator):
             and its value is the chnages for that category.
         """
         splitted_text = rn.split(splitter)
-        splitted_categories_dict = {}
-        for category in splitted_text:
-            if category:
-                splitted_categories_dict[category[0:category.index("\n")]] = category[category.index("\n") + 1:]
-        return splitted_categories_dict
+        return {
+            category[: category.index("\n")]: category[category.index("\n") + 1 :]
+            for category in splitted_text
+            if category
+        }
 
     def get_categories_from_rn(self, rn: str) -> dict:
         return self.get_information_from_rn(rn, "\n#### ")

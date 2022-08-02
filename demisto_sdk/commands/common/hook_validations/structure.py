@@ -74,8 +74,10 @@ class StructureValidator(BaseValidator):
         if is_new_file or not is_file_path_in_pack(self.file_path):
             self.old_file = {}
         else:
-            self.old_file = get_remote_file(old_file_path if old_file_path else file_path, tag=tag,
-                                            suppress_print=suppress_print)
+            self.old_file = get_remote_file(
+                old_file_path or file_path, tag=tag, suppress_print=suppress_print
+            )
+
         self.configuration = configuration
 
     def is_valid_file(self):
@@ -131,7 +133,7 @@ class StructureValidator(BaseValidator):
         # ignore schema checks for unsupported file types, reputations.json or is skip-schema-check is set.
         if self.scheme_name in [None, FileType.IMAGE, FileType.README, FileType.RELEASE_NOTES, FileType.TEST_PLAYBOOK,
                                 FileType.AUTHOR_IMAGE, FileType.PYTHON_FILE] \
-                or self.skip_schema_check or (self.scheme_name == FileType.REPUTATION and
+                    or self.skip_schema_check or (self.scheme_name == FileType.REPUTATION and
                                               os.path.basename(self.file_path) == OLD_REPUTATION):
             return True
 
@@ -146,7 +148,15 @@ class StructureValidator(BaseValidator):
                 logging.disable(logging.ERROR)
             scheme_file_name = 'integration' if self.scheme_name.value == 'betaintegration' else self.scheme_name.value  # type: ignore
             path = os.path.normpath(
-                os.path.join(__file__, "..", "..", self.SCHEMAS_PATH, '{}.yml'.format(scheme_file_name)))
+                os.path.join(
+                    __file__,
+                    "..",
+                    "..",
+                    self.SCHEMAS_PATH,
+                    f'{scheme_file_name}.yml',
+                )
+            )
+
             core = Core(source_file=self.file_path,
                         schema_files=[path])
             core.validate(raise_exception=True)
@@ -172,17 +182,13 @@ class StructureValidator(BaseValidator):
             (str or None): file ID if exists.
         """
         try:
-            file_id = loaded_file_data.get('id')
-            if not file_id:
-                # In integrations/scripts, the id is under 'commonfields'.
-                file_id = loaded_file_data.get('commonfields', {}).get('id', '')
-            if not file_id:
-                # In layout, the id is under 'layout'.
-                file_id = loaded_file_data.get('layout', {}).get('id', '')
-            if not file_id:
-                file_id = loaded_file_data.get('trigger_id')
+            return (
+                loaded_file_data.get('id')
+                or loaded_file_data.get('commonfields', {}).get('id', '')
+                or loaded_file_data.get('layout', {}).get('id', '')
+                or loaded_file_data.get('trigger_id')
+            )
 
-            return file_id
         except AttributeError:
             return None
 
@@ -217,7 +223,7 @@ class StructureValidator(BaseValidator):
 
         old_version_id = self.get_file_id_from_loaded_file_data(self.old_file)
         new_file_id = self.get_file_id_from_loaded_file_data(self.current_file)
-        if not (new_file_id == old_version_id):
+        if new_file_id != old_version_id:
             error_message, error_code = Errors.file_id_changed(old_version_id, new_file_id)
             if self.handle_error(error_message, error_code, file_path=self.file_path):
                 return False
@@ -272,10 +278,8 @@ class StructureValidator(BaseValidator):
             if file_extension in self.FILE_SUFFIX_TO_LOAD_FUNCTION:
                 load_function = self.FILE_SUFFIX_TO_LOAD_FUNCTION[file_extension]
                 with open(self.file_path, 'r') as file_obj:
-                    loaded_file_data = load_function(file_obj)  # type: ignore
-                    return loaded_file_data
+                    return load_function(file_obj)
 
-            # Ignore loading image and markdown
             elif file_extension in ['.png', '.md']:
                 return {}
 
@@ -373,17 +377,15 @@ class StructureValidator(BaseValidator):
             list: A list of strings indicating the path to the pykwalify error location.
         """
         # err example: '- Cannot find required key \'description\'. Path: \'\''
-        step_1 = str(error_line).split('Path: ')
+        step_1 = error_line.split('Path: ')
         # step_1 example: ["- Cannot find required key description'. ", "'/script/commands/0/outputs/20'.: ", "'/'>"]
         step_2 = step_1[1]
         # step_2 example: "'/category' Enum: ['Analytics & SIEM', 'Utilities', 'Messaging']"
         step_3 = step_2.split('Enum')[0] if 'Enum' in step_2 else step_2
         # step_3 example: '\'/script/commands/0/outputs/20\'.: '
         step_4 = step_3.split('/')
-        # step_4 example: ["\'script", "commands", "0", "outputs" "20\'.: "]'
-        error_path = self.clean_path(step_4)
         # error_path example: ['script', 'commands', '0', 'outputs', '20']
-        return error_path
+        return self.clean_path(step_4)
 
     def clean_path(self, path: List[str]) -> List[str]:
         """Cleans extra punctuation from pykwalify error path
@@ -397,8 +399,7 @@ class StructureValidator(BaseValidator):
         clean_path = []
         table = str.maketrans(dict.fromkeys(string.punctuation))
         for part in path:
-            clean_part = part.translate(table).strip()
-            if clean_part:
+            if clean_part := part.translate(table).strip():
                 clean_path.append(clean_part)
 
         return clean_path
@@ -415,16 +416,14 @@ class StructureValidator(BaseValidator):
             str, str, bool: the validate error message, code and whether to suggest format as a possible fix
         """
         # error message example:  - Cannot find required key 'version'. Path: '/commonfields'.
-        error_key = str(error_msg).split('key')[1].split('.')[0].replace("'", "").strip()
+        error_key = error_msg.split('key')[1].split('.')[0].replace("'", "").strip()
         if error_path:
             error_path_str = self.translate_error_path(error_path)
             error_message, error_code = Errors.pykwalify_missing_parameter(str(error_key), error_path_str)
-            return error_message, error_code, True
-
-        # if no path found this is an error in root
         else:
             error_message, error_code = Errors.pykwalify_missing_in_root(str(error_key))
-            return error_message, error_code, True
+
+        return error_message, error_code, True
 
     @error_codes('ST111,ST108')
     def parse_undefined_key_line(self, error_path: List[str], error_msg: str) -> Tuple[str, str, bool]:
@@ -438,15 +437,14 @@ class StructureValidator(BaseValidator):
             str, str, bool: the validate error message, code and whether to suggest format as a possible fix
         """
         # error message example: - Key 'ok' was not defined. Path: '/configuration/0'.
-        error_key = str(error_msg).split('Key')[1].split(' ')[1].replace("'", "").strip()
+        error_key = error_msg.split('Key')[1].split(' ')[1].replace("'", "").strip()
         if error_path:
             error_path_str = self.translate_error_path(error_path)
             error_message, error_code = Errors.pykwalify_field_undefined_with_path(str(error_key), error_path_str)
-            return error_message, error_code, True
-
         else:
             error_message, error_code = Errors.pykwalify_field_undefined(str(error_key))
-            return error_message, error_code, True
+
+        return error_message, error_code, True
 
     @error_codes('ST112')
     def parse_enum_error_line(self, error_path: List[str], error_msg: str) -> Tuple[str, str, bool]:
@@ -461,8 +459,11 @@ class StructureValidator(BaseValidator):
         """
         # error message example: - Enum 'Network Securitys' does not exist.
         # Path: '/category' Enum: ['Analytics & SIEM', 'Utilities', 'Messaging'].
-        wrong_enum = str(error_msg).split('Enum ')[1].split('does')[0].replace("'", "").strip()
-        possible_values = str(error_msg).split('Enum:')[-1].strip(' [].')
+        wrong_enum = (
+            error_msg.split('Enum ')[1].split('does')[0].replace("'", "").strip()
+        )
+
+        possible_values = error_msg.split('Enum:')[-1].strip(' [].')
         error_message, error_code = Errors.pykwalify_incorrect_enum(self.translate_error_path(error_path),
                                                                     wrong_enum, possible_values)
         return error_message, error_code, False
@@ -526,9 +527,11 @@ def checked_type_by_reg(file_path, compared_regexes=None, return_regex=False):
 
     """
     compared_regexes = compared_regexes or CHECKED_TYPES_REGEXES
-    for regex in compared_regexes:
-        if re.search(regex, file_path, re.IGNORECASE):
-            if return_regex:
-                return regex
-            return True
-    return False
+    return next(
+        (
+            regex if return_regex else True
+            for regex in compared_regexes
+            if re.search(regex, file_path, re.IGNORECASE)
+        ),
+        False,
+    )

@@ -97,9 +97,12 @@ class TestDockerImage:
     @pytest.mark.parametrize('docker, docker_tag, expected_output', data_test_none_demisto_docker)
     def test_none_demisto_docker(self, docker, docker_tag, expected_output):
         docker_image_validator = mock_docker_image_validator()
-        assert docker_image_validator.get_docker_image_latest_tag(docker_image_name=docker,
-                                                                  yml_docker_image='{}:{}'.format(docker,
-                                                                                                  docker_tag)) == expected_output
+        assert (
+            docker_image_validator.get_docker_image_latest_tag(
+                docker_image_name=docker, yml_docker_image=f'{docker}:{docker_tag}'
+            )
+            == expected_output
+        )
 
     # disable-secrets-detection-start
     def test_get_docker_image_from_yml(self):
@@ -176,7 +179,7 @@ class TestDockerImage:
         docker_image_validator.is_deprecated_image = ''
 
         assert docker_image_validator.is_docker_image_latest_tag() is False
-        assert docker_image_validator.is_latest_tag is False
+        assert not docker_image_validator.is_latest_tag
         assert docker_image_validator.is_docker_image_valid() is False
 
     def test_is_docker_image_latest_tag_with_tag_labeled_latest(self):
@@ -202,7 +205,7 @@ class TestDockerImage:
         docker_image_validator.is_deprecated_image = ''
 
         assert docker_image_validator.is_docker_image_latest_tag() is False
-        assert docker_image_validator.is_latest_tag is False
+        assert not docker_image_validator.is_latest_tag
         assert docker_image_validator.is_docker_image_valid() is False
 
     def test_is_docker_image_latest_tag_with_latest_tag(self):
@@ -228,7 +231,7 @@ class TestDockerImage:
         docker_image_validator.is_deprecated_image = ''
 
         assert docker_image_validator.is_docker_image_latest_tag() is True
-        assert docker_image_validator.is_latest_tag is True
+        assert docker_image_validator.is_latest_tag
         assert docker_image_validator.is_docker_image_valid() is True
 
     def test_is_docker_image_latest_tag_with_numeric_but_not_most_updated(self):
@@ -255,7 +258,7 @@ class TestDockerImage:
         docker_image_validator.is_iron_bank = False
         docker_image_validator.is_deprecated_image = ''
         assert docker_image_validator.is_docker_image_latest_tag() is False
-        assert docker_image_validator.is_latest_tag is False
+        assert not docker_image_validator.is_latest_tag
         assert docker_image_validator.is_docker_image_valid() is False
 
     def test_is_docker_image_latest_tag_without_tag(self):
@@ -281,7 +284,7 @@ class TestDockerImage:
         docker_image_validator.is_deprecated_image = ''
 
         assert docker_image_validator.is_docker_image_latest_tag() is False
-        assert docker_image_validator.is_latest_tag is False
+        assert not docker_image_validator.is_latest_tag
         assert docker_image_validator.is_docker_image_valid() is False
 
     @pytest.mark.parametrize('code_type, expected', [('javascript', True), ('python', False)])
@@ -455,7 +458,7 @@ class TestDockerImage:
                 Validates we send the correct request to Iron Bank.
             """
             manifest_url = 'https://repo1.dso.mil/api/v4/projects/dsop%2Fopensource%2Fpalo-alto-networks%2Ftest%2F'\
-                           'test_project/repository/files/hardening_manifest.yaml/raw'
+                                   'test_project/repository/files/hardening_manifest.yaml/raw'
             request_mock = requests_mock.get(
                 manifest_url,
                 text="""apiVersion: v1\nname: opensource/palo-alto-networks/test/test_project\ntags:\n- 1.0.1.23955\n"""
@@ -468,7 +471,7 @@ class TestDockerImage:
             DockerImageValidator._get_manifest_from_commit(manifest_url, 'sha1')
             assert request_mock.last_request.query == 'ref=sha1'
             assert request_mock.last_request.path == '/api/v4/projects/dsop%2fopensource%2fpalo-alto-networks%2f' \
-                                                     'test%2ftest_project/repository/files/hardening_manifest.yaml/raw'
+                                                             'test%2ftest_project/repository/files/hardening_manifest.yaml/raw'
 
         FAIL_CASES_GET_MANIFEST = [
             ('', 404,
@@ -487,7 +490,7 @@ class TestDockerImage:
                 Validates we show the correct error.
             """
             manifest_url = 'https://repo1.dso.mil/api/v4/projects/dsop%2Fopensource%2Fpalo-alto-networks%2Ftest%2F' \
-                           'test_project/repository/files/hardening_manifest.yaml/raw'
+                                   'test_project/repository/files/hardening_manifest.yaml/raw'
             requests_mock.get(
                 manifest_url,
                 status_code=mocked_status,

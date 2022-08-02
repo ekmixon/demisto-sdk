@@ -24,7 +24,7 @@ def mock_structure(file_path=None, current_file=None, old_file=None):
         structure.pykwalify_logs = False
         structure.scheme_name = namedtuple('scheme_name', 'value')(value='genericfield')
         structure.checked_files = set()
-        structure.ignored_errors = dict()
+        structure.ignored_errors = {}
         structure.suppress_print = True
         structure.json_file_path = None
         structure.specific_validations = None

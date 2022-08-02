@@ -56,11 +56,12 @@ class PreProcessRuleValidator(ContentEntityValidator):
         Returns:
             bool. True if from version field is valid, else False.
         """
-        if self.from_version:
-            if LooseVersion(self.from_version) < LooseVersion(FROM_VERSION_PRE_PROCESS_RULES):
-                error_message, error_code = Errors.invalid_from_server_version_in_pre_process_rules('fromServerVersion')
-                if self.handle_error(error_message, error_code, file_path=self.file_path):
-                    return False
+        if self.from_version and LooseVersion(self.from_version) < LooseVersion(
+            FROM_VERSION_PRE_PROCESS_RULES
+        ):
+            error_message, error_code = Errors.invalid_from_server_version_in_pre_process_rules('fromServerVersion')
+            if self.handle_error(error_message, error_code, file_path=self.file_path):
+                return False
         return True
 
     def get_all_incident_fields(self) -> List[str]:
@@ -98,10 +99,8 @@ class PreProcessRuleValidator(ContentEntityValidator):
     @staticmethod
     def get_field_name(src: str) -> str:
         ret_value = src
-        if ret_value.startswith("${"):
-            ret_value = ret_value[2:]
-        if ret_value.endswith("}"):
-            ret_value = ret_value[:-1]
+        ret_value = ret_value.removeprefix("${")
+        ret_value = ret_value.removesuffix("}")
         return ret_value
 
     def is_script_exists(self, id_set_file, is_ci) -> bool:
@@ -140,8 +139,7 @@ class PreProcessRuleValidator(ContentEntityValidator):
 
         pre_process_rule_fields = self.get_all_incident_fields()
 
-        invalid_fields = set(pre_process_rule_fields) - id_set_fields
-        if invalid_fields:
+        if invalid_fields := set(pre_process_rule_fields) - id_set_fields:
             error_message, error_code = Errors.unknown_fields_in_pre_process_rules(', '.join(invalid_fields))
             if self.handle_error(error_message, error_code, file_path=self.file_path):
                 return False

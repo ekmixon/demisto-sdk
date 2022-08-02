@@ -43,10 +43,10 @@ class ScriptValidator(ContentEntityValidator):
     def _is_sub_set(cls, supposed_bigger_list, supposed_smaller_list):
         # type: (list, list) -> bool
         """Check if supposed_smaller_list is a subset of the supposed_bigger_list"""
-        for check_item in supposed_smaller_list:
-            if check_item not in supposed_bigger_list:
-                return False
-        return True
+        return all(
+            check_item in supposed_bigger_list
+            for check_item in supposed_smaller_list
+        )
 
     def is_backward_compatible(self):
         # type: () -> bool
@@ -94,7 +94,7 @@ class ScriptValidator(ContentEntityValidator):
         core_packs_list = get_core_pack_list()
 
         pack = get_pack_name(self.file_path)
-        is_core = True if pack in core_packs_list else False
+        is_core = pack in core_packs_list
         if is_core:
             is_script_valid = all([
                 is_script_valid,
@@ -112,11 +112,8 @@ class ScriptValidator(ContentEntityValidator):
         Returns:
             dict. arg name to its required status.
         """
-        arg_to_required = {}
         args = script_json.get('args', [])
-        for arg in args:
-            arg_to_required[arg.get('name')] = arg.get('required', False)
-        return arg_to_required
+        return {arg.get('name'): arg.get('required', False) for arg in args}
 
     @error_codes('BC100')
     def is_changed_subtype(self):
@@ -154,26 +151,24 @@ class ScriptValidator(ContentEntityValidator):
         old_args_to_required = self._get_arg_to_required_dict(self.old_file)
 
         for arg, required in current_args_to_required.items():
-            if required:
-                if (arg not in old_args_to_required) or \
-                        (arg in old_args_to_required and required != old_args_to_required[arg]):
-                    error_message, error_code = Errors.added_required_fields(arg)
-                    if self.handle_error(error_message, error_code, file_path=self.file_path,
-                                         warning=self.structure_validator.quiet_bc):
-                        return True
+            if required and (
+                arg not in old_args_to_required
+                or required != old_args_to_required[arg]
+            ):
+                error_message, error_code = Errors.added_required_fields(arg)
+                if self.handle_error(error_message, error_code, file_path=self.file_path,
+                                     warning=self.structure_validator.quiet_bc):
+                    return True
         return False
 
     @error_codes('SC105')
     def no_incident_in_core_pack(self):
         """check if args name contains the word incident"""
         args = self.current_file.get('args', [])
-        strings_with_incident_list = []
         no_incidents = True
-        for arg in args:
-            if 'incident' in arg['name']:
-                strings_with_incident_list.append(arg['name'])
-
-        if strings_with_incident_list:
+        if strings_with_incident_list := [
+            arg['name'] for arg in args if 'incident' in arg['name']
+        ]:
             error_message, error_code = Errors.incident_in_script_arg(strings_with_incident_list)
             if self.handle_error(error_message, error_code, file_path=self.file_path,
                                  suggested_fix=Errors.suggest_server_allowlist_fix()):
@@ -186,9 +181,7 @@ class ScriptValidator(ContentEntityValidator):
         # type: () -> bool
         """Check if there are duplicated arguments."""
         args = [arg['name'] for arg in self.current_file.get('args', [])]
-        if len(args) != len(set(args)) and not self.structure_validator.quiet_bc:
-            return True
-        return False
+        return len(args) != len(set(args)) and not self.structure_validator.quiet_bc
 
     @error_codes('BC103')
     def is_arg_changed(self):
@@ -241,17 +234,13 @@ class ScriptValidator(ContentEntityValidator):
                                                       suppress_print=self.suppress_print,
                                                       json_file_path=self.json_file_path,
                                                       specific_validations=self.specific_validations)
-        if docker_image_validator.is_docker_image_valid():
-            return True
-        return False
+        return bool(docker_image_validator.is_docker_image_valid())
 
     @error_codes('SC100')
     def is_valid_name(self):
         # type: () -> bool
         version_number: Optional[str] = get_file_version_suffix_if_exists(self.current_file)
-        if not version_number:
-            return True
-        else:
+        if version_number:
             name = self.current_file.get('name')
             correct_name = f'V{version_number}'
             if not name.endswith(correct_name):  # type: ignore
@@ -259,7 +248,7 @@ class ScriptValidator(ContentEntityValidator):
                 if self.handle_error(error_message, error_code, file_path=self.file_path):
                     return False
 
-            return True
+        return True
 
     @error_codes('IN120')
     def is_valid_pwsh(self) -> bool:
@@ -280,13 +269,14 @@ class ScriptValidator(ContentEntityValidator):
         comment = self.current_file.get('comment', '')
         deprecated_v2_regex = DEPRECATED_REGEXES[0]
         deprecated_no_replace_regex = DEPRECATED_REGEXES[1]
-        if is_deprecated:
-            if re.search(deprecated_v2_regex, comment) or re.search(deprecated_no_replace_regex, comment):
-                pass
-            else:
-                error_message, error_code = Errors.invalid_deprecated_script()
-                if self.handle_error(error_message, error_code, file_path=self.file_path):
-                    is_valid = False
+        if (
+            is_deprecated
+            and not re.search(deprecated_v2_regex, comment)
+            and not re.search(deprecated_no_replace_regex, comment)
+        ):
+            error_message, error_code = Errors.invalid_deprecated_script()
+            if self.handle_error(error_message, error_code, file_path=self.file_path):
+                is_valid = False
         return is_valid
 
     @error_codes('SC104,SC103')

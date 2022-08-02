@@ -1321,7 +1321,7 @@ class TestIsValidMaxFetchAndFirstFetch:
         self.validator.is_valid = True
         self.validator.current_file['script']['isfetch'] = False
         assert self.validator.is_valid_max_fetch_and_first_fetch(), \
-            'is_valid_fetch() returns False instead True'
+                'is_valid_fetch() returns False instead True'
 
 
 class TestIsFeedParamsExist:

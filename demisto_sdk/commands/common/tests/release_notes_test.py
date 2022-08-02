@@ -517,7 +517,12 @@ def test_validate_json_when_breaking_changes(release_notes_content, has_json, ch
     else:
         release_note = pack.create_release_notes(version='1.0.0', content=release_notes_content)
     if change_json:
-        update_json(path=release_note.path[:-2] + 'json', key='breakingChanges', value=False)
+        update_json(
+            path=f'{release_note.path[:-2]}json',
+            key='breakingChanges',
+            value=False,
+        )
+
 
     validator.release_notes_file_path = release_note.path
     assert validator.validate_json_when_breaking_changes() == expected_result

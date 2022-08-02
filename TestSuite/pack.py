@@ -49,36 +49,36 @@ class Pack:
         self.name = name
         self._repo = repo
         self.repo_path = repo.path
-        self.integrations: List[Integration] = list()
-        self.scripts: List[Script] = list()
-        self.classifiers: List[JSONBased] = list()
-        self.mappers: List[JSONBased] = list()
-        self.dashboards: List[JSONBased] = list()
-        self.incident_types: List[JSONBased] = list()
-        self.incident_fields: List[JSONBased] = list()
-        self.indicator_fields: List[JSONBased] = list()
-        self.indicator_types: List[JSONBased] = list()
-        self.generic_fields: List[JSONBased] = list()
-        self.generic_types: List[JSONBased] = list()
-        self.generic_modules: List[JSONBased] = list()
-        self.generic_definitions: List[JSONBased] = list()
-        self.layouts: List[JSONBased] = list()
-        self.layoutcontainers: List[JSONBased] = list()
-        self.reports: List[JSONBased] = list()
-        self.widgets: List[JSONBased] = list()
-        self.lists: List[JSONBased] = list()
-        self.playbooks: List[Playbook] = list()
-        self.test_playbooks: List[Playbook] = list()
-        self.release_notes: List[TextBased] = list()
-        self.release_notes_config: List[JSONBased] = list()
-        self.jobs: List[Job] = list()
-        self.parsing_rules: List[Rule] = list()
-        self.modeling_rules: List[Rule] = list()
-        self.correlation_rules: List[YAML] = list()
-        self.xsiam_dashboards: List[JSONBased] = list()
-        self.xsiam_reports: List[JSONBased] = list()
-        self.triggers: List[JSONBased] = list()
-        self.wizards: List[Wizard] = list()
+        self.integrations: List[Integration] = []
+        self.scripts: List[Script] = []
+        self.classifiers: List[JSONBased] = []
+        self.mappers: List[JSONBased] = []
+        self.dashboards: List[JSONBased] = []
+        self.incident_types: List[JSONBased] = []
+        self.incident_fields: List[JSONBased] = []
+        self.indicator_fields: List[JSONBased] = []
+        self.indicator_types: List[JSONBased] = []
+        self.generic_fields: List[JSONBased] = []
+        self.generic_types: List[JSONBased] = []
+        self.generic_modules: List[JSONBased] = []
+        self.generic_definitions: List[JSONBased] = []
+        self.layouts: List[JSONBased] = []
+        self.layoutcontainers: List[JSONBased] = []
+        self.reports: List[JSONBased] = []
+        self.widgets: List[JSONBased] = []
+        self.lists: List[JSONBased] = []
+        self.playbooks: List[Playbook] = []
+        self.test_playbooks: List[Playbook] = []
+        self.release_notes: List[TextBased] = []
+        self.release_notes_config: List[JSONBased] = []
+        self.jobs: List[Job] = []
+        self.parsing_rules: List[Rule] = []
+        self.modeling_rules: List[Rule] = []
+        self.correlation_rules: List[YAML] = []
+        self.xsiam_dashboards: List[JSONBased] = []
+        self.xsiam_reports: List[JSONBased] = []
+        self.triggers: List[JSONBased] = []
+        self.wizards: List[Wizard] = []
 
         # Create base pack
         self._pack_path = packs_dir / self.name
@@ -342,11 +342,6 @@ class Pack:
     ) -> JSONBased:
         prefix = 'incidentfield'
         incident_field = self._create_json_based(name, prefix, content, dir_path=self._incidents_field_path)
-        if release_notes:
-            # release_notes = self._create_text_based(f'{incident_field}_CHANGELOG.md',
-            # dir_path=self._incidents_field_path)
-            # self.incident_fields.append(release_notes)
-            pass
         self.incident_fields.append(incident_field)
         return incident_field
 

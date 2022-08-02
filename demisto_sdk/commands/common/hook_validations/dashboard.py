@@ -11,10 +11,11 @@ class DashboardValidator(ContentEntityValidator):
     def get_widgets_from_dashboard(dashboard):
         # type: () -> list
         layout_of_dashboard: list = dashboard.get('layout', [])
-        widgets = []
-        if layout_of_dashboard:
-            widgets = [item.get('widget') for item in layout_of_dashboard]
-        return widgets
+        return (
+            [item.get('widget') for item in layout_of_dashboard]
+            if layout_of_dashboard
+            else []
+        )
 
     def is_valid_dashboard(self, validate_rn=True):
         # type: (bool) -> bool
@@ -70,9 +71,12 @@ class DashboardValidator(ContentEntityValidator):
         for field in fields_to_exclude:
             if self.current_file.get(field) is not None:
                 error_message, error_code = Errors.remove_field_from_dashboard(field)
-                formatted_message = self.handle_error(error_message, error_code, file_path=self.file_path,
-                                                      should_print=False)
-                if formatted_message:
+                if formatted_message := self.handle_error(
+                    error_message,
+                    error_code,
+                    file_path=self.file_path,
+                    should_print=False,
+                ):
                     is_valid = False
                     error_msg += formatted_message
             # iterate over the widgets if exist
@@ -80,9 +84,12 @@ class DashboardValidator(ContentEntityValidator):
                 for widget in widgets:
                     if widget.get(field):
                         error_message, error_code = Errors.remove_field_from_widget(field, widget)
-                        formatted_message = self.handle_error(error_message, error_code, file_path=self.file_path,
-                                                              should_print=False)
-                        if formatted_message:
+                        if formatted_message := self.handle_error(
+                            error_message,
+                            error_code,
+                            file_path=self.file_path,
+                            should_print=False,
+                        ):
                             is_valid = False
                             error_msg += formatted_message
         if error_msg:
@@ -106,9 +113,12 @@ class DashboardValidator(ContentEntityValidator):
         for field in fields_to_include:
             if not self.current_file.get(field):
                 error_message, error_code = Errors.include_field_in_dashboard(field)
-                formatted_message = self.handle_error(error_message, error_code, file_path=self.file_path,
-                                                      should_print=False)
-                if formatted_message:
+                if formatted_message := self.handle_error(
+                    error_message,
+                    error_code,
+                    file_path=self.file_path,
+                    should_print=False,
+                ):
                     is_valid = False
                     error_msg += formatted_message
             # iterate over the widgets if exist
@@ -117,9 +127,12 @@ class DashboardValidator(ContentEntityValidator):
                     if not widget.get(field):
                         widget_name = widget.get("name")
                         error_message, error_code = Errors.include_field_in_widget(field, widget_name)
-                        formatted_message = self.handle_error(error_message, error_code, file_path=self.file_path,
-                                                              should_print=False)
-                        if formatted_message:
+                        if formatted_message := self.handle_error(
+                            error_message,
+                            error_code,
+                            file_path=self.file_path,
+                            should_print=False,
+                        ):
                             is_valid = False
                             error_msg += formatted_message
         if error_msg:

@@ -99,9 +99,9 @@ class TestErrors(unittest.TestCase):
         Then: Return error message with the input value as a tuple containing error and error code.
         """
         error_statement = "The file type is not supported in the validate command.\n" \
-                          "The validate command supports: Integrations, Scripts, Playbooks, " \
-                          "Incident fields, Incident types, Indicator fields, Indicator types, Objects fields," \
-                          " Object types, Object modules, Images, Release notes, Layouts, Jobs, Wizards, and Descriptions."
+                              "The validate command supports: Integrations, Scripts, Playbooks, " \
+                              "Incident fields, Incident types, Indicator fields, Indicator types, Objects fields," \
+                              " Object types, Object modules, Images, Release notes, Layouts, Jobs, Wizards, and Descriptions."
         expected_result = (error_statement, "BA102")
         result = Errors.file_type_not_supported()
         assert result == expected_result
@@ -141,8 +141,8 @@ class TestErrors(unittest.TestCase):
         path = "https://github.com/demisto/content/blob/123/Packs/TestPack/doc_files/test.png"
         alternative_path = "https://github.com/demisto/content/raw/123/Packs/TestPack/doc_files/test.png"
         error_statement = f'Detected following image url:\n{path}\n' \
-                          f'Which is not the raw link. You probably want to use the following raw image url:\n' \
-                          f'{alternative_path}'
+                              f'Which is not the raw link. You probably want to use the following raw image url:\n' \
+                              f'{alternative_path}'
         expected_result = (error_statement, "RM101")
         result = Errors.image_path_error(path, alternative_path)
         assert result == expected_result
@@ -165,7 +165,7 @@ class TestErrors(unittest.TestCase):
         skip_comment = "Issue 00000"
 
         expected = f"The integration {integration_id} is currently in skipped. Please add working tests and " + \
-                   f"unskip. Skip comment: {skip_comment}"
+                       f"unskip. Skip comment: {skip_comment}"
 
         result = Errors.integration_is_skipped(integration_id, skip_comment)
         assert result[0] == expected

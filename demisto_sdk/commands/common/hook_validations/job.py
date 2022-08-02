@@ -29,8 +29,9 @@ class JobValidator(ContentEntityValidator):
     def is_valid_fromversion(self):
         if not self.from_version or LooseVersion(self.from_version) < LooseVersion(FILETYPE_TO_DEFAULT_FROMVERSION.get(FileType.JOB)):
             error_message, error_code = Errors.invalid_fromversion_in_job(self.from_version)
-            formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path)
-            if formatted_error:
+            if formatted_error := self.handle_error(
+                error_message, error_code, file_path=self.file_path
+            ):
                 self._errors.append(error_message)
                 return False
         return True
@@ -44,32 +45,31 @@ class JobValidator(ContentEntityValidator):
         if is_feed:
             if selected_feeds and is_all_feeds:
                 error_message, error_code = Errors.invalid_both_selected_and_all_feeds_in_job()
-                formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path)
-                if formatted_error:
+                if formatted_error := self.handle_error(
+                    error_message, error_code, file_path=self.file_path
+                ):
                     self._errors.append(error_message)
                     return False
 
-            elif selected_feeds:
+            elif selected_feeds or is_all_feeds:
                 return True  # feeds are validated in the id_set
-
-            elif is_all_feeds:
-                return True
 
             else:  # neither selected_fields nor is_all_fields
                 error_message, error_code = Errors.missing_field_values_in_feed_job()
-                formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path)
-                if formatted_error:
+                if formatted_error := self.handle_error(
+                    error_message, error_code, file_path=self.file_path
+                ):
                     self._errors.append(error_message)
                     return False
 
-        else:  # is_feed=false
-            if selected_feeds or is_all_feeds:
-                error_message, error_code = \
+        elif selected_feeds or is_all_feeds:
+            error_message, error_code = \
                     Errors.unexpected_field_values_in_non_feed_job(bool(selected_feeds), bool(is_all_feeds))
-                formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path)
-                if formatted_error:
-                    self._errors.append(error_message)
-                    return False
+            if formatted_error := self.handle_error(
+                error_message, error_code, file_path=self.file_path
+            ):
+                self._errors.append(error_message)
+                return False
 
         return True
 
@@ -78,8 +78,9 @@ class JobValidator(ContentEntityValidator):
         name = self.current_file.get('name')
         if (not name) or (name.isspace()):
             error_message, error_code = Errors.empty_or_missing_job_name()
-            formatted_error = self.handle_error(error_message, error_code, file_path=self.file_path)
-            if formatted_error:
+            if formatted_error := self.handle_error(
+                error_message, error_code, file_path=self.file_path
+            ):
                 self._errors.append(error_message)
                 return False
         return True

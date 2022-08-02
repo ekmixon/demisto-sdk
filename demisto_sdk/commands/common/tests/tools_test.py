@@ -386,7 +386,7 @@ class TestGetRemoteFileLocally:
         example_repo = git.Repo.init(self.REPO_NAME)
         origin_branch = self.main_branch
         if not origin_branch.startswith('origin'):
-            origin_branch = 'origin/' + origin_branch
+            origin_branch = f'origin/{origin_branch}'
         example_repo.git.checkout('-b', f'{origin_branch}')
         with open(os.path.join(self.REPO_NAME, self.FILE_NAME), 'w+') as somefile:
             somefile.write(self.FILE_CONTENT)
@@ -459,7 +459,7 @@ class TestPrintColor:
         tools.print_color('test', LOG_COLORS.GREEN)
 
         print_args = print.call_args[0][0]
-        assert print_args == u'{}{}{}'.format(LOG_COLORS.GREEN, 'test', LOG_COLORS.NATIVE)
+        assert print_args == f'{LOG_COLORS.GREEN}test{LOG_COLORS.NATIVE}'
 
 
 class TestReleaseVersion:
@@ -721,7 +721,12 @@ def test_get_ignore_pack_tests__ignore_test(tmpdir, mocker):
 
     # prepare mocks
     mocker.patch.object(tools, "get_pack_ignore_file_path", return_value=pack_ignore_path)
-    mocker.patch.object(os.path, "join", return_value=str(test_playbook_path / (test_playbook.name + ".yml")))
+    mocker.patch.object(
+        os.path,
+        "join",
+        return_value=str(test_playbook_path / f"{test_playbook.name}.yml"),
+    )
+
     mocker.patch.object(tools, "get_test_playbook_id", return_value=('SamplePlaybookTest', 'FakeTestPack'))
 
     ignore_test_set = get_ignore_pack_skipped_tests(fake_pack_name, {fake_pack_name}, {})
@@ -850,8 +855,8 @@ def test_test_get_file_version_suffix_if_exists_no_name_and_no_display():
     Then:
     - Ensure None is returned.
     """
-    assert get_file_version_suffix_if_exists(dict(), check_in_display=True) is None
-    assert get_file_version_suffix_if_exists(dict(), check_in_display=False) is None
+    assert get_file_version_suffix_if_exists({}, check_in_display=True) is None
+    assert get_file_version_suffix_if_exists({}, check_in_display=False) is None
 
 
 def test_get_to_version_with_to_version(repo):
@@ -1430,8 +1435,8 @@ def test_get_definition_name():
     """
 
     pack_path = f'{GIT_ROOT}/demisto_sdk/tests/test_files/generic_testing'
-    field_path = pack_path + "/GenericFields/Object/genericfield-Sample.json"
-    type_path = pack_path + "/GenericTypes/Object/generictype-Sample.json"
+    field_path = f"{pack_path}/GenericFields/Object/genericfield-Sample.json"
+    type_path = f"{pack_path}/GenericTypes/Object/generictype-Sample.json"
 
     assert tools.get_definition_name(field_path, pack_path) == 'Object'
     assert tools.get_definition_name(type_path, pack_path) == 'Object'

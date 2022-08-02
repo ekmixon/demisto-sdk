@@ -67,7 +67,7 @@ class Layout(LayoutObject):
         Returns:
             (Optional[str]): ID of the layout.
         """
-        return self.get('layout', dict()).get('id')
+        return self.get('layout', {}).get('id')
 
     def get_layout_sections(self) -> Optional[List]:
         """
@@ -76,7 +76,7 @@ class Layout(LayoutObject):
         Returns:
             (Optional[List]): Sections of the layout if exists.
         """
-        return self.get('layout', dict()).get('sections')
+        return self.get('layout', {}).get('sections')
 
     def get_layout_tabs(self) -> Optional[List]:
         """
@@ -85,7 +85,7 @@ class Layout(LayoutObject):
         Returns:
             (Optional[List]): Tabs of the layout if exists.
         """
-        return self.get('layout', dict()).get('tabs')
+        return self.get('layout', {}).get('tabs')
 
 
 class LayoutsContainer(LayoutObject):

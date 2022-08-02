@@ -38,8 +38,12 @@ class JSONContentObject(JSONObject):
             1. Should be deprecated in the future.
         """
         if not self._change_log:
-            change_log_file = next(self.path.parent.glob(patterns=fr'{re.escape(self.path.stem)}_CHANGELOG.md'), None)
-            if change_log_file:
+            if change_log_file := next(
+                self.path.parent.glob(
+                    patterns=fr'{re.escape(self.path.stem)}_CHANGELOG.md'
+                ),
+                None,
+            ):
                 self._change_log = ChangeLog(change_log_file)
 
         return self._change_log
@@ -52,8 +56,12 @@ class JSONContentObject(JSONObject):
             Readme object or None if Readme not found.
         """
         if not self._readme:
-            readme_file = next(self.path.parent.glob(patterns=fr'{re.escape(self.path.stem)}_README.md'), None)
-            if readme_file:
+            if readme_file := next(
+                self.path.parent.glob(
+                    patterns=fr'{re.escape(self.path.stem)}_README.md'
+                ),
+                None,
+            ):
                 self._readme = Readme(readme_file)
 
         return self._readme

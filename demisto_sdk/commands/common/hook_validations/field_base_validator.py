@@ -132,12 +132,9 @@ class FieldBaseValidator(ContentEntityValidator):
             "tickets",
             "issues",
         }
-        found_words = []
-        for word in name.split():
-            if word.lower() in bad_words:
-                found_words.append(word)
-
-        if found_words:
+        if found_words := [
+            word for word in name.split() if word.lower() in bad_words
+        ]:
             error_message, error_code = Errors.invalid_incident_field_name(found_words)
             if self.handle_error(
                     error_message,
@@ -209,9 +206,9 @@ class FieldBaseValidator(ContentEntityValidator):
         if GroupFieldTypes.is_valid_group(group):
             return True
         error_message, error_code = Errors.invalid_field_group_value(group)
-        if self.handle_error(error_message, error_code, file_path=self.file_path):
-            return False
-        return True
+        return not self.handle_error(
+            error_message, error_code, file_path=self.file_path
+        )
 
     def is_valid_cli_name(self) -> bool:
         """
@@ -238,7 +235,7 @@ class FieldBaseValidator(ContentEntityValidator):
             cli_name_expected = _id[len('indicator'):]
         else:
             return True
-        if cli_name != cli_name_expected and cli_name != _id:
+        if cli_name not in [cli_name_expected, _id]:
             error_message, error_code = Errors.cli_name_and_id_do_not_match(_id)
             if self.handle_error(error_message, error_code, file_path=self.file_path):
                 return False
@@ -255,9 +252,9 @@ class FieldBaseValidator(ContentEntityValidator):
         if re.fullmatch(FIELD_CLI_NAME_VALIDATION_REGEX, cliname):  # type: ignore
             return True
         error_message, error_code = Errors.invalid_incident_field_cli_name_regex(FIELD_CLI_NAME_VALIDATION_REGEX)
-        if self.handle_error(error_message, error_code, file_path=self.file_path):
-            return False
-        return True
+        return not self.handle_error(
+            error_message, error_code, file_path=self.file_path
+        )
 
     @error_codes('IF106')
     def is_cli_name_is_builtin_key(self) -> bool:
@@ -294,8 +291,7 @@ class FieldBaseValidator(ContentEntityValidator):
             (bool): True if from version field was changed, false otherwise.
         """
         is_from_version_changed = False
-        old_from_version = self.old_file.get('fromVersion', None)
-        if old_from_version:
+        if old_from_version := self.old_file.get('fromVersion', None):
             current_from_version = self.current_file.get('fromVersion', None)
             if old_from_version != current_from_version:
                 error_message, error_code = Errors.from_version_modified_after_rename()
@@ -428,8 +424,11 @@ class FieldBaseValidator(ContentEntityValidator):
             (self.is_alias_has_inner_alias, Errors.aliases_with_inner_alias),
         ]
         for validator, error_generator in validators_and_error_generators:
-            invalid_aliases = [alias.get("cliname") for alias in self._get_incident_fields_by_aliases(aliases) if validator(alias)]
-            if invalid_aliases:
+            if invalid_aliases := [
+                alias.get("cliname")
+                for alias in self._get_incident_fields_by_aliases(aliases)
+                if validator(alias)
+            ]:
                 error_message, error_code = error_generator(invalid_aliases)
                 if self.handle_error(error_message, error_code, file_path=self.file_path, warning=self.structure_validator.quiet_bc):
                     is_valid = False
@@ -451,8 +450,7 @@ class FieldBaseValidator(ContentEntityValidator):
         for incident_field in incident_field_list:
             field_id = list(incident_field.keys())[0]
             if field_id in alias_ids:
-                aliased_field = incident_field[field_id]
-                yield aliased_field
+                yield incident_field[field_id]
 
     def is_alias_has_invalid_marketplaces(self, aliased_field: dict) -> bool:
         return aliased_field.get('marketplaces', [MarketplaceVersions.XSOAR.value]) != [MarketplaceVersions.XSOAR.value]

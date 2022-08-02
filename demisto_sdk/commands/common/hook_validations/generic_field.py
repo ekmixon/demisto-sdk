@@ -42,10 +42,9 @@ class GenericFieldValidator(ContentEntityValidator):
             return True
 
         error_message, error_code = Errors.invalid_generic_field_group_value(group, GENERIC_FIELD_GROUP)
-        if self.handle_error(error_message, error_code, file_path=self.file_path):
-            return False
-
-        return True
+        return not self.handle_error(
+            error_message, error_code, file_path=self.file_path
+        )
 
     @error_codes('GF101')
     def is_valid_id_prefix(self):
@@ -58,10 +57,9 @@ class GenericFieldValidator(ContentEntityValidator):
             return True
 
         error_message, error_code = Errors.invalid_generic_field_id(generic_field_id, GENERIC_FIELD_ID_PREFIX)
-        if self.handle_error(error_message, error_code, file_path=self.file_path):
-            return False
-
-        return True
+        return not self.handle_error(
+            error_message, error_code, file_path=self.file_path
+        )
 
     @error_codes('GF102')
     def is_valid_unsearchable_key(self):
@@ -70,11 +68,14 @@ class GenericFieldValidator(ContentEntityValidator):
         Returns:
             bool. Whether the file's unsearchable key is set to true.
         """
-        generic_field_unsearchable = self.current_file.get('unsearchable', True)
-        if generic_field_unsearchable:
+        if generic_field_unsearchable := self.current_file.get(
+            'unsearchable', True
+        ):
             return True
         error_message, error_code = Errors.unsearchable_key_should_be_true_generic_field()
-        if self.handle_error(error_message, error_code, file_path=self.file_path,
-                             suggested_fix=Errors.suggest_fix(self.file_path)):
-            return False
-        return True
+        return not self.handle_error(
+            error_message,
+            error_code,
+            file_path=self.file_path,
+            suggested_fix=Errors.suggest_fix(self.file_path),
+        )

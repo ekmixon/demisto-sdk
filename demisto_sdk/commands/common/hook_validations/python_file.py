@@ -16,8 +16,7 @@ class PythonFileValidator(BaseValidator):
                          specific_validations=specific_validations)
 
         self.file_path = Path(file_path)
-        with open(self.file_path) as f:
-            file_content = f.read()
+        file_content = Path(self.file_path).read_text()
         self.file_content = file_content
 
     @error_codes('BA119')
@@ -31,9 +30,9 @@ class PythonFileValidator(BaseValidator):
         invalid_lines = []
         invalid_words = ['BSD', 'MIT', 'Copyright', 'proprietary']
         for line_num, line in enumerate(self.file_content.split('\n')):
-            for text in invalid_words:
-                if text in line.split():
-                    invalid_lines.append(line_num + 1)
+            invalid_lines.extend(
+                line_num + 1 for text in invalid_words if text in line.split()
+            )
 
         if invalid_lines:
             error_message, error_code = Errors.copyright_section_in_python_error(invalid_lines)

@@ -14,18 +14,23 @@ class IsEqualFunctions:
         for k, v1 in dict1.items():
             v2 = dict2[k]
 
-            if isinstance(v1, dict):
-                comparison = IsEqualFunctions.is_dicts_equal(v1, v2, lists_as_sets)
-            elif isinstance(v1, list):
-                if lists_as_sets:
-                    comparison = set(v1) == set(v2)
-                else:
-                    comparison = v1 == v2
-            elif isinstance(v1, set):
+            if (
+                not isinstance(v1, dict)
+                and isinstance(v1, list)
+                and lists_as_sets
+                or not isinstance(v1, dict)
+                and not isinstance(v1, list)
+                and isinstance(v1, set)
+            ):
                 comparison = set(v1) == set(v2)
-            else:
+            elif (
+                not isinstance(v1, dict)
+                and isinstance(v1, list)
+                or not isinstance(v1, dict)
+            ):
                 comparison = v1 == v2
-
+            else:
+                comparison = IsEqualFunctions.is_dicts_equal(v1, v2, lists_as_sets)
             if not comparison:
                 return False
 

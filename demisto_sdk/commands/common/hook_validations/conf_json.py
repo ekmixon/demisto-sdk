@@ -51,12 +51,11 @@ class ConfJsonValidator(BaseValidator):
         Args:
             checked_dict (dict): Dictionary from conf.json file.
         """
-        problematic_instances = []
-        for instance, description in checked_dict.items():
-            if description == "":
-                problematic_instances.append(instance)
-
-        if problematic_instances:
+        if problematic_instances := [
+            instance
+            for instance, description in checked_dict.items()
+            if description == ""
+        ]:
             error_message, error_code = Errors.description_missing_from_conf_json(problematic_instances)
             if self.handle_error(error_message, error_code, file_path=CONF_PATH):
                 self._is_valid = False
@@ -80,9 +79,7 @@ class ConfJsonValidator(BaseValidator):
                 return True
 
         error_message, error_code = Errors.test_not_in_conf_json(file_id)
-        if self.handle_error(error_message, error_code, file_path=CONF_PATH):
-            return False
-        return True
+        return not self.handle_error(error_message, error_code, file_path=CONF_PATH)
 
     def is_valid_file_in_conf_json(self, current_file, file_type, file_path):
         """Check if the file is valid in the conf.json"""
@@ -116,7 +113,6 @@ class ConfJsonValidator(BaseValidator):
             return True
         if test_playbook_ids is None:
             test_playbook_ids = []
-        test_playbooks_unskip_status = {}
         all_test_playbook_ids = test_playbook_ids.copy()
         skipped_tests = self.conf_data.get('skipped_tests', {})
 
@@ -127,11 +123,13 @@ class ConfJsonValidator(BaseValidator):
         if isinstance(current_file.get('tests'), list):
             all_test_playbook_ids.extend(current_file.get('tests', []))
 
-        for test_playbook_id in set(all_test_playbook_ids):
-            if (skipped_tests and test_playbook_id in skipped_tests) or 'No test' in test_playbook_id:
-                test_playbooks_unskip_status[test_playbook_id] = False
-            else:
-                test_playbooks_unskip_status[test_playbook_id] = True
+        test_playbooks_unskip_status = {
+            test_playbook_id: (
+                not skipped_tests or test_playbook_id not in skipped_tests
+            )
+            and 'No test' not in test_playbook_id
+            for test_playbook_id in set(all_test_playbook_ids)
+        }
 
         if not any(test_playbooks_unskip_status.values()) and not self.has_unittest(file_path):
             error_message, error_code = Errors.all_entity_test_playbooks_are_skipped(entity_id)
@@ -141,13 +139,19 @@ class ConfJsonValidator(BaseValidator):
 
     def integration_has_unskipped_test_playbook(self, integration_data, integration_id, file_path):
         """Validate there is at least one unskipped test playbook."""
-        test_playbook_ids = []
         conf_tests = self.conf_data.get('tests', [])
-        for test in conf_tests:
-            if 'integrations' in test:
-                if (isinstance(test['integrations'], str) and integration_id == test['integrations']) or \
-                        integration_id in list(test['integrations']):
-                    test_playbook_ids.append(test['playbookID'])
+        test_playbook_ids = [
+            test['playbookID']
+            for test in conf_tests
+            if 'integrations' in test
+            and (
+                (
+                    isinstance(test['integrations'], str)
+                    and integration_id == test['integrations']
+                )
+                or integration_id in list(test['integrations'])
+            )
+        ]
 
         return self.has_unskipped_test_playbook(integration_data, integration_id, file_path, test_playbook_ids)
 
@@ -162,7 +166,4 @@ class ConfJsonValidator(BaseValidator):
         test_path = self.get_test_path(file_path)
 
         # We only check existence as we have coverage report to check the actual tests
-        if not test_path.exists():
-            return False
-
-        return True
+        return bool(test_path.exists())

@@ -88,8 +88,8 @@ pass_config = click.make_pass_decorator(DemistoSDK, ensure=True)
 
 def check_configuration_file(command, args):
     config_file_path = '.demisto-sdk-conf'
-    true_synonyms = ['true', 'True', 't', '1']
     if os.path.isfile(config_file_path):
+        true_synonyms = ['true', 'True', 't', '1']
         try:
             config = ConfigParser(allow_no_value=True)
             config.read(config_file_path)
@@ -106,13 +106,11 @@ def check_configuration_file(command, args):
                         elif args[key] is None and config[command][key] is not None:
                             args[key] = config[command][key]
 
-                    # if the key does not exist in the current args, add it
-                    else:
-                        if config[command][key] in true_synonyms:
-                            args[key] = True
+                    elif config[command][key] in true_synonyms:
+                        args[key] = True
 
-                        else:
-                            args[key] = config[command][key]
+                    else:
+                        args[key] = config[command][key]
 
         except MissingSectionHeaderError:
             pass
@@ -148,15 +146,13 @@ def main(config, version, release_notes):
                 print_warning(f'however version {last_release} is available.\n'
                               f'To update, run pip3 install --upgrade demisto-sdk')
             if release_notes:
-                rn_entries = get_release_note_entries(__version__)
-
-                if not rn_entries:
-                    print_warning('\nCould not get the release notes for this version.')
-                else:
+                if rn_entries := get_release_note_entries(__version__):
                     click.echo('\nThe following are the release note entries for the current version:\n')
                     for rn in rn_entries:
                         click.echo(rn)
                     click.echo('')
+                else:
+                    print_warning('\nCould not get the release notes for this version.')
 
 
 # ====================== split ====================== #
@@ -936,18 +932,19 @@ def upload(**kwargs):
     if kwargs['zip'] or kwargs['input_config_file']:
         if kwargs.pop('zip', False):
             pack_path = kwargs['input']
-            kwargs.pop('input_config_file')
-
         else:
             config_file_path = kwargs['input_config_file']
             config_file_to_parse = ConfigFileParser(config_file_path=config_file_path)
             pack_path = config_file_to_parse.parse_file()
             kwargs['detached_files'] = True
-            kwargs.pop('input_config_file')
-        if kwargs.pop('xsiam', False):
-            marketplace = MarketplaceVersions.MarketplaceV2.value
-        else:
-            marketplace = MarketplaceVersions.XSOAR.value
+        kwargs.pop('input_config_file')
+
+        marketplace = (
+            MarketplaceVersions.MarketplaceV2.value
+            if kwargs.pop('xsiam', False)
+            else MarketplaceVersions.XSOAR.value
+        )
+
         os.environ[ENV_DEMISTO_SDK_MARKETPLACE] = marketplace.lower()
 
         output_zip_path = kwargs.pop('keep_zip') or tempfile.gettempdir()
@@ -1750,13 +1747,12 @@ def postman_codegen(
         path = Path(output) / f'config-{postman_config.name}.json'
         path.write_text(json.dumps(postman_config.to_dict(), indent=4))
         logger.info(f'Config file generated at:\n{str(path.absolute())}')
-    else:
+    elif package:
         # generate integration yml
         yml_path = postman_config.generate_integration_package(output, is_unified=True)
-        if package:
-            yml_splitter = YmlSplitter(configuration=config.configuration, file_type=FileType.INTEGRATION.value,
-                                       input=str(yml_path), output=str(output))
-            yml_splitter.extract_to_package_format()
+        yml_splitter = YmlSplitter(configuration=config.configuration, file_type=FileType.INTEGRATION.value,
+                                   input=str(yml_path), output=str(output))
+        yml_splitter.extract_to_package_format()
 
 
 # ====================== generate-integration ====================== #
@@ -1836,11 +1832,7 @@ def openapi_codegen(**kwargs):
     from demisto_sdk.commands.openapi_codegen.openapi_codegen import \
         OpenAPIIntegration
     check_configuration_file('openapi-codegen', kwargs)
-    if not kwargs.get('output_dir'):
-        output_dir = os.getcwd()
-    else:
-        output_dir = kwargs['output_dir']
-
+    output_dir = kwargs['output_dir'] if kwargs.get('output_dir') else os.getcwd()
     # Check the directory exists and if not, try to create it
     if not os.path.exists(output_dir):
         try:
@@ -1898,13 +1890,13 @@ def openapi_codegen(**kwargs):
             command_to_run = f'demisto-sdk openapi-codegen -i "{input_file}" -cf "{config_path}" -n "{base_name}" ' \
                              f'-o "{output_dir}" -pr "{command_prefix}" -c "{context_path}"'
             if unique_keys:
-                command_to_run = command_to_run + f' -u "{unique_keys}"'
+                command_to_run = f'{command_to_run} -u "{unique_keys}"'
             if root_objects:
-                command_to_run = command_to_run + f' -r "{root_objects}"'
+                command_to_run = f'{command_to_run} -r "{root_objects}"'
             if verbose:
-                command_to_run = command_to_run + ' -v'
+                command_to_run = f'{command_to_run} -v'
             if fix_code:
-                command_to_run = command_to_run + ' -f'
+                command_to_run = f'{command_to_run} -f'
 
             click.echo(f'Run the command again with the created configuration file(after a review): {command_to_run}')
             sys.exit(0)
@@ -2038,8 +2030,7 @@ def doc_review(**kwargs):
         release_notes_only=kwargs.get('release_notes'),
         load_known_words_from_pack=kwargs.get('use_packs_known_words'),
     )
-    result = doc_reviewer.run_doc_review()
-    if result:
+    if result := doc_reviewer.run_doc_review():
         sys.exit(0)
 
     sys.exit(1)
@@ -2070,9 +2061,7 @@ def integration_diff(**kwargs):
         old=kwargs.get('old', ''),
         docs_format=kwargs.get('docs_format', False)
     )
-    result = integration_diff_detector.check_different()
-
-    if result:
+    if result := integration_diff_detector.check_different():
         sys.exit(0)
 
     sys.exit(1)
@@ -2131,9 +2120,7 @@ def convert(config, **kwargs):
     input_path = kwargs['input']
     server_version = kwargs['version']
     convert_manager = ConvertManager(input_path, server_version)
-    result = convert_manager.convert()
-
-    if result:
+    if result := convert_manager.convert():
         sys.exit(1)
 
     sys.exit(0)
